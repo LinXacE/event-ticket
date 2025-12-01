@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SmartEvents{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-white py-4">
+                    <h2 class="mb-2">
+                        <i class="fas fa-user-circle me-2"></i>Welcome, {{ current_user.username }}!
+                    </h2>
+                    <p class="mb-0 opacity-75">
+                        <i class="fas fa-calendar-check me-2"></i>Manage your events and access passes from your dashboard
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-calendar-alt fa-3x text-primary"></i>
+                    </div>
+                    <h3 class="fw-bold">{{ stats.total_events }}</h3>
+                    <p class="text-muted mb-0">Total Events</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-ticket-alt fa-3x text-success"></i>
+                    </div>
+                    <h3 class="fw-bold">{{ stats.total_passes }}</h3>
+                    <p class="text-muted mb-0">Passes Generated</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-check-circle fa-3x text-info"></i>
+                    </div>
+                    <h3 class="fw-bold">{{ stats.validated_passes }}</h3>
+                    <p class="text-muted mb-0">Validated Passes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-users fa-3x text-warning"></i>
+                    </div>
+                    <h3 class="fw-bold">{{ stats.total_participants }}</h3>
+                    <p class="text-muted mb-0">Participants</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="fas fa-bolt text-warning me-2"></i>Quick Actions
+            </h4>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{{ url_for('passes.generate_pass') }}" class="btn btn-lg w-100 text-white py-3" 
+                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                        <i class="fas fa-qrcode fa-2x mb-2 d-block"></i>
+                        Generate Pass
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('passes.validate_pass') }}" class="btn btn-lg btn-outline-success w-100 py-3">
+                        <i class="fas fa-camera fa-2x mb-2 d-block"></i>
+                        Scan & Validate
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('dashboard.events') }}" class="btn btn-lg btn-outline-primary w-100 py-3">
+                        <i class="fas fa-calendar-plus fa-2x mb-2 d-block"></i>
+                        Manage Events
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('dashboard.analytics') }}" class="btn btn-lg btn-outline-info w-100 py-3">
+                        <i class="fas fa-chart-bar fa-2x mb-2 d-block"></i>
+                        View Analytics
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Events -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar text-primary me-2"></i>Recent Events
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_events %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Event Name</th>
+                                        <th>Date</th>
+                                        <th>Passes</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in recent_events %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ event.name }}</strong>
+                                        </td>
+                                        <td>{{ event.date.strftime('%b %d, %Y') }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ event.pass_count }}</span>
+                                        </td>
+                                        <td>
+                                            {% if event.status == 'active' %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% elif event.status == 'upcoming' %}
+                                                <span class="badge bg-info">Upcoming</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Completed</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('dashboard.event_details', event_id=event.id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No events created yet</p>
+                            <a href="{{ url_for('dashboard.events') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Create Your First Event
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history text-success me-2"></i>Recent Activity
+                    </h5>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    {% if recent_activities %}
+                        <div class="list-group list-group-flush">
+                            {% for activity in recent_activities %}
+                            <div class="list-group-item border-0 px-0">
+                                <div class="d-flex align-items-start">
+                                    <div class="me-3">
+                                        <i class="fas fa-{{ activity.icon }} text-{{ activity.color }}"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <p class="mb-1 small">{{ activity.description }}</p>
+                                        <small class="text-muted">{{ activity.timestamp.strftime('%I:%M %p') }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-clock fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0 small">No recent activity</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .card {
+        border-radius: 15px;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
