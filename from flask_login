@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from database import db
-fom flrask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login  import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from datetime import datetime, timedelta
 import os
