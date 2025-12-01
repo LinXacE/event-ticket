@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Pass - SmartEvents{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient text-white py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h3 class="mb-0 text-center">
+                        <i class="fas fa-qrcode me-2"></i>Generate Event Pass
+                    </h3>
+                </div>
+                <div class="card-body p-5">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('passes.generate_pass') }}" id="generatePassForm">
+                        <!-- Event Selection -->
+                        <div class="mb-4">
+                            <label for="event_id" class="form-label fw-bold">
+                                <i class="fas fa-calendar-alt text-primary me-2"></i>Select Event
+                            </label>
+                            <select class="form-select form-select-lg" id="event_id" name="event_id" required>
+                                <option value="" selected disabled>Choose an event...</option>
+                                {% for event in events %}
+                                    <option value="{{ event.id }}">{{ event.name }} - {{ event.date.strftime('%B %d, %Y') }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Pass Type Selection -->
+                        <div class="mb-4">
+                            <label for="pass_type" class="form-label fw-bold">
+                                <i class="fas fa-ticket-alt text-success me-2"></i>Pass Type
+                            </label>
+                            <select class="form-select form-select-lg" id="pass_type" name="pass_type" required>
+                                <option value="" selected disabled>Select pass type...</option>
+                                <option value="Judge">Judge</option>
+                                <option value="Mentor">Mentor</option>
+                                <option value="Participant">Participant</option>
+                                <option value="Volunteer">Volunteer</option>
+                                <option value="VIP">VIP</option>
+                                <option value="Staff">Staff</option>
+                            </select>
+                        </div>
+
+                        <!-- Participant Name -->
+                        <div class="mb-4">
+                            <label for="participant_name" class="form-label fw-bold">
+                                <i class="fas fa-user text-info me-2"></i>Participant Name
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="participant_name" 
+                                   name="participant_name" placeholder="Enter full name" required>
+                        </div>
+
+                        <!-- Contact Email -->
+                        <div class="mb-4">
+                            <label for="email" class="form-label fw-bold">
+                                <i class="fas fa-envelope text-warning me-2"></i>Email Address
+                            </label>
+                            <input type="email" class="form-control form-control-lg" id="email" 
+                                   name="email" placeholder="participant@example.com" required>
+                        </div>
+
+                        <!-- Phone Number -->
+                        <div class="mb-4">
+                            <label for="phone" class="form-label fw-bold">
+                                <i class="fas fa-phone text-danger me-2"></i>Phone Number
+                            </label>
+                            <input type="tel" class="form-control form-control-lg" id="phone" 
+                                   name="phone" placeholder="+1234567890" required>
+                        </div>
+
+                        <!-- Quantity (Batch Generation) -->
+                        <div class="mb-4">
+                            <label for="quantity" class="form-label fw-bold">
+                                <i class="fas fa-layer-group text-secondary me-2"></i>Quantity (Batch Generation)
+                            </label>
+                            <input type="number" class="form-control form-control-lg" id="quantity" 
+                                   name="quantity" value="1" min="1" max="100" required>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> Generate multiple passes at once (max 100)
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label fw-bold">
+                                <i class="fas fa-sticky-note text-muted me-2"></i>Additional Notes (Optional)
+                            </label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Any special requirements or notes..."></textarea>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-grid gap-3 mt-5">
+                            <button type="submit" class="btn btn-lg text-white py-3" 
+                                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                                <i class="fas fa-magic me-2"></i>Generate Pass with QR & Barcode
+                            </button>
+                            <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary btn-lg py-3">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="card mt-4 border-0 bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>Quick Tips
+                    </h5>
+                    <ul class="mb-0">
+                        <li>Each pass generates both QR code and barcode for flexibility</li>
+                        <li>Batch generation creates multiple passes with sequential IDs</li>
+                        <li>All passes are encrypted for security</li>
+                        <li>Passes can be validated using the built-in scanner</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .card {
+        border-radius: 15px;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
