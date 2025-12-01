@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from models import Event, EventPass, PassType, EventAnalytics
-from app import db
+from database import db
 from utils.qr_generator import create_event_pass_qr, generate_pass_code
 from utils.barcode_generator import create_event_pass_barcode
 import os
