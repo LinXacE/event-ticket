@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models import Event, EventPass, EventAnalytics, PassType, ValidationLog
-from app import db
+from database import db
 from sqlalchemy import func
 
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
