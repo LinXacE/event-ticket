@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, session
-from models import db, Pass, Event, ValidationLog
+from database import db
+from models import EventPass, Event, ValidationLog
 from cryptography.fernet import Fernet
 from datetime import datetime
 import os
