@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
 from models import User
-from app import db, bcrypt
+from database import db
+from app import bcrypt
 from datetime import datetime
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
