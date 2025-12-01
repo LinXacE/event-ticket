@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from models import db, Event, Pass
+from database import db
+from models import Event, EventPass
 from datetime import datetime
 
 events_bp = Blueprint('events', __name__)
