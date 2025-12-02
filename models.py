@@ -125,4 +125,4 @@ class SystemSetting(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def __repr__(self):
-        return f'<SystemSetting {self.setting_key}>>'
+        return f'<SystemSetting {self.setting_key}>'
