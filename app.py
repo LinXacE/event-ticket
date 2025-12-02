@@ -34,9 +34,9 @@ from routes import auth, events, passes, validation, analytics, dashboard
 
 # Register blueprints
 app.register_blueprint(auth.bp)
-app.register_blueprint(events.bp)
+app.register_blueprint(events.events_bp)
 app.register_blueprint(passes.bp)
-app.register_blueprint(validation.bp)
+app.register_blueprint(validation.validation_bp)
 app.register_blueprint(analytics.bp)
 app.register_blueprint(dashboard.bp)
 
