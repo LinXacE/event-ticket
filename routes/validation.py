@@ -10,7 +10,7 @@ import json
 validation_bp = Blueprint('validation', __name__)
 
 # Load encryption key
-ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY').encode()
+ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', 'default-dev-encryption-key-change-this-32char').encode()
 cipher = Fernet(ENCRYPTION_KEY)
 
 @validation_bp.route('/validate', methods=['GET', 'POST'])
