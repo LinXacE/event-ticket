@@ -23,6 +23,12 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
 
+# User loader function
+@login_manager.user_loader
+def load_user(user_id):
+    from models import User
+    return User.query.get(int(user_id))
+
 # Import routes after app initialization
 from routes import auth, events, passes, validation, analytics, dashboard
 
