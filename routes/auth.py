@@ -2,10 +2,11 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from models import User
 from database import db
-from app import bcrypt
+from flask_bcrypt import Bcrypt
 from datetime import datetime
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
+bcrypt = Bcrypt()  # local bcrypt for this blueprint
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():

@@ -189,8 +189,8 @@ def validation_history():
         history.append({
             'id': log.id,
             'pass_id': log.pass_id,
-            'participant': log.pass.participant_name,
-            'event': log.pass.event.event_name,
+            'participant': log.pass_.participant_name,
+            'event': log.pass_.event.event_name,
             'validated_at': log.validation_time.strftime('%Y-%m-%d %H:%M:%S'),
             'status': log.validation_status
         })
