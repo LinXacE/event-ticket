@@ -39,7 +39,7 @@ def home():
         'validation_rate': round((validated_passes / total_passes * 100) if total_passes > 0 else 0, 1)
     }
     
-    return render_template('dashboard/home.html', 
+    return render_template('dashboard/index.html', 
                           events=events, 
                           stats=stats, 
                           pass_stats=pass_stats,
