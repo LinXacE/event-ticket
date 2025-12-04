@@ -54,3 +54,47 @@ def profile():
 @login_required
 def settings():
     return render_template('dashboard/settings.html')
+
+@bp.route('/events')
+@login_required
+def events():
+    # Get all events for the current user
+    if current_user.role == 'admin':
+        events = Event.query.order_by(Event.created_at.desc()).all()
+    else:
+        events = Event.query.filter_by(organizer_id=current_user.id).order_by(Event.created_at.desc()).all()
+    
+    return render_template('dashboard/events.html', events=events)
+
+@bp.route('/events/<int:event_id>')
+@login_required
+def event_details(event_id):
+    event = Event.query.get_or_404(event_id)
+    
+    # Check if user has permission to view this event
+    if current_user.role != 'admin' and event.organizer_id != current_user.id:
+        flash('You do not have permission to view this event.', 'danger')
+        return redirect(url_for('dashboard.home'))
+    
+    # Get passes for this event
+    passes = EventPass.query.filter_by(event_id=event_id).all()
+    
+    return render_template('dashboard/event_details.html', event=event, passes=passes)
+
+@bp.route('/analytics')
+@login_required
+def analytics():
+    # Get analytics data
+    if current_user.role == 'admin':
+        total_events = Event.query.count()
+        total_passes = EventPass.query.count()
+    else:
+        total_events = Event.query.filter_by(organizer_id=current_user.id).count()
+        total_passes = EventPass.query.join(Event).filter(Event.organizer_id == current_user.id).count()
+    
+    validated_passes = EventPass.query.filter_by(is_validated=True).count()
+    
+    return render_template('dashboard/analytics.html', 
+                         total_events=total_events,
+                         total_passes=total_passes,
+                         validated_passes=validated_passes)
