@@ -92,11 +92,12 @@ def edit_event(event_id):
     """Edit an existing event"""
     event = Event.query.get_or_404(event_id)
 
-        # Check permission: only event organizer or admin can edit
-        if event.organizer_id != current_user.id and current_user.role != 'admin':
-                    flash('You do not have permission to edit this event', 'error')
-                    return redirect(url_for('events.event_details', event_id=event_id))
     
+    # Check permission: only event organizer or admin can edit
+    if event.organizer_id != current_user.id and current_user.role != 'admin':
+        flash('You do not have permission to edit this event', 'error')
+        return redirect(url_for('events.event_details', event_id=event_id))
+        
     if request.method == 'POST':
         try:
             event.event_name = request.form.get('name')
