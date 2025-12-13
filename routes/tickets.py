@@ -223,9 +223,4 @@ def scanner():
     """Ticket scanner page"""
     return render_template('tickets/scanner.html')
     
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
+    
