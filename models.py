@@ -2,7 +2,6 @@ from database import db
 from flask_login import UserMixin
 from datetime import datetime
 
-
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     
@@ -41,7 +40,7 @@ class Event(db.Model):
     
     def __repr__(self):
         return f'<Event {self.event_name}>'
-
+    
     @property
     def date(self):
         return self.event_date
@@ -109,11 +108,6 @@ class EventAnalytics(db.Model):
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
     total_passes_generated = db.Column(db.Integer, default=0)
     total_passes_validated = db.Column(db.Integer, default=0)
-    judges_count = db.Column(db.Integer, default=0)
-    mentors_count = db.Column(db.Integer, default=0)
-    participants_count = db.Column(db.Integer, default=0)
-    volunteers_count = db.Column(db.Integer, default=0)
-    guests_count = db.Column(db.Integer, default=0)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def __repr__(self):
@@ -131,26 +125,25 @@ class SystemSetting(db.Model):
     def __repr__(self):
         return f'<SystemSetting {self.setting_key}>'
 
-
 class TicketBatch(db.Model):
-        __tablename__ = 'ticket_batches'
-
+    __tablename__ = 'ticket_batches'
+    
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
     batch_name = db.Column(db.String(100), nullable=False)
     batch_type = db.Column(db.Enum('normal', 'gamify'), default='normal')
     seat_count = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    
     tickets = db.relationship('Ticket', backref='batch', lazy=True, cascade='all, delete-orphan')
     event = db.relationship('Event', backref='batches', lazy=True)
-
+    
     def __repr__(self):
-                return f'<TicketBatch {self.batch_name}>'
+        return f'<TicketBatch {self.batch_name}>'
 
 class Promotion(db.Model):
-        __tablename__ = 'promotions'
-
+    __tablename__ = 'promotions'
+    
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
     promotion_name = db.Column(db.String(100), nullable=False)
@@ -159,15 +152,15 @@ class Promotion(db.Model):
     quantity = db.Column(db.Integer, default=1)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    
     event = db.relationship('Event', backref='promotions', lazy=True)
-
+    
     def __repr__(self):
-                return f'<Promotion {self.promotion_name}>'
+        return f'<Promotion {self.promotion_name}>'
 
 class Ticket(db.Model):
-        __tablename__ = 'tickets'
-
+    __tablename__ = 'tickets'
+    
     id = db.Column(db.Integer, primary_key=True)
     batch_id = db.Column(db.Integer, db.ForeignKey('ticket_batches.id'), nullable=False)
     ticket_code = db.Column(db.String(255), unique=True, nullable=False)
@@ -178,8 +171,8 @@ class Ticket(db.Model):
     scanned_by = db.Column(db.String(100))
     scanned_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    
     promotion = db.relationship('Promotion', backref='tickets', lazy=True)
-
+    
     def __repr__(self):
-                return f'<Ticket {self.ticket_code}>'
+        return f'<Ticket {self.ticket_code}>'
