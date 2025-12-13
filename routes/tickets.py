@@ -216,6 +216,12 @@ def scan_by_code():
             'price': ticket.price,
             'scanned_by': current_user.username
         })
+
+    @tickets_bp.route('/scanner')
+@login_required
+def scanner():
+    """Ticket scanner page"""
+    return render_template('tickets/scanner.html')
     
     except Exception as e:
         db.session.rollback()
