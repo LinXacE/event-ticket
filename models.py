@@ -44,11 +44,11 @@ class Event(db.Model):
 
     @property
     def date(self):
-                    return self.event_date
-
+        return self.event_date
+    
     @property
     def time(self):
-                    return self.event_time
+        return self.event_time
 
 class PassType(db.Model):
     __tablename__ = 'pass_types'
