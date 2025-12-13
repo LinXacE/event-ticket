@@ -217,8 +217,8 @@ def scan_by_code():
             'scanned_by': current_user.username
         })
 
-        except Exception as e:
-        db.session.rollback()
+    except Exception as e: 
+            db.session.rollba)k()
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
