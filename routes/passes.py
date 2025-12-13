@@ -20,14 +20,22 @@ def generate_form():
 @login_required
 def generate_pass():
     event_id = request.form.get('event_id')
-    pass_type_id = request.form.get('pass_type_id')
-    participant_name = request.form.get('participant_name')
-    participant_email = request.form.get('participant_email')
-    participant_phone = request.form.get('participant_phone')
-    quantity = int(request.form.get('quantity', 1))
+    pass_type_name = request.form.get('pass_type')  # Now getting name instead of ID
     
     event = Event.query.get_or_404(event_id)
-    pass_type = PassType.query.get_or_404(pass_type_id)
+    
+    # Get or create pass type
+    pass_type = PassType.query.filter_by(type_name=pass_type_name).first()
+    if not pass_type:
+        # Create new custom pass type
+        pass_type = PassType(
+            type_name=pass_type_name,
+            description=f'Custom pass type: {pass_type_name}',
+            access_level=3,  # Default access level
+            color_code='#007bff'  # Default color
+        )
+        db.session.add(pass_type)
+        db.session.flush()  # Get the IDt_or_404(pass_type_id)
     
     secret_key = os.getenv('ENCRYPTION_KEY', 'default-secret-key')
     generated_passes = []
