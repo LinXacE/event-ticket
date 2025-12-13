@@ -43,11 +43,11 @@ class Event(db.Model):
         return f'<Event {self.event_name}>'
 
     @property
-        def date(self):
+    def date(self):
                     return self.event_date
 
     @property
-        def time(self):
+    def time(self):
                     return self.event_time
 
 class PassType(db.Model):
