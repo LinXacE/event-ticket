@@ -16,80 +16,36 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
                     <form method="POST" action="{{ url_for('events.create_event') }}">
-                        {{ form.hidden_tag() }}
                         
                         <div class="mb-3">
                             <label for="name" class="form-label">Event Name</label>
-                            {{ form.name(class="form-control", placeholder="Enter event name") }}
-                            {% if form.name.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {% for error in form.name.errors %}
-                                        <span>{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
+                            <input type="text" class="form-control" id="name" name="name" placeholder="Enter event name" required>
                         </div>
 
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
-                            {{ form.description(class="form-control", rows="4", placeholder="Enter event description") }}
-                            {% if form.description.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {% for error in form.description.errors %}
-                                        <span>{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
+                            <textarea class="form-control" id="description" name="description" rows="4" placeholder="Enter event description"></textarea>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="date" class="form-label">Event Date</label>
-                                {{ form.date(class="form-control", type="date") }}
-                                {% if form.date.errors %}
-                                    <div class="invalid-feedback d-block">
-                                        {% for error in form.date.errors %}
-                                            <span>{{ error }}</span>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+                                <input type="date" class="form-control" id="date" name="date" required>
                             </div>
-
                             <div class="col-md-6 mb-3">
                                 <label for="time" class="form-label">Event Time</label>
-                                {{ form.time(class="form-control", type="time") }}
-                                {% if form.time.errors %}
-                                    <div class="invalid-feedback d-block">
-                                        {% for error in form.time.errors %}
-                                            <span>{{ error }}</span>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+                                <input type="time" class="form-control" id="time" name="time" required>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="location" class="form-label">Location</label>
-                            {{ form.location(class="form-control", placeholder="Enter event location") }}
-                            {% if form.location.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {% for error in form.location.errors %}
-                                        <span>{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
+                            <input type="text" class="form-control" id="location" name="location" placeholder="Enter event location" required>
                         </div>
 
                         <div class="mb-3">
-                            <label for="capacity" class="form-label">Capacity</label>
-                            {{ form.capacity(class="form-control", type="number", placeholder="Enter maximum capacity") }}
-                            {% if form.capacity.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {% for error in form.capacity.errors %}
-                                        <span>{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
+                            <label for="max_participants" class="form-label">Maximum Participants</label>
+                            <input type="number" class="form-control" id="max_participants" name="max_participants" placeholder="Enter maximum capacity">
                         </div>
 
                         <div class="d-flex gap-2">
