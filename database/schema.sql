@@ -5,7 +5,7 @@ CREATE DATABASE IF NOT EXISTS event_ticket_system;
 USE event_ticket_system;
 
 -- Users Table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE users (
 );
 
 -- Events Table
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     event_name VARCHAR(200) NOT NULL,
     event_description TEXT,
@@ -37,7 +37,7 @@ CREATE TABLE events (
 );
 
 -- Pass Types Table
-CREATE TABLE pass_types (
+CREATE TABLE IF NOT EXISTS pass_types (
     id INT AUTO_INCREMENT PRIMARY KEY,
     type_name VARCHAR(50) NOT NULL,
     description TEXT,
@@ -52,10 +52,11 @@ INSERT INTO pass_types (type_name, description, access_level, color_code) VALUES
 ('Mentor', 'Access pass for mentors and advisors', 4, '#28a745'),
 ('Participant', 'Standard participant access', 3, '#007bff'),
 ('Volunteer', 'Volunteer staff access', 2, '#ffc107'),
-('Guest', 'Limited guest access', 1, '#6c757d');
+('Guest', 'Limited guest access', 1, '#6c757d')
+ON DUPLICATE KEY UPDATE type_name=type_name;
 
 -- Event Passes Table
-CREATE TABLE event_passes (
+CREATE TABLE IF NOT EXISTS event_passes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     event_id INT NOT NULL,
     pass_type_id INT NOT NULL,
@@ -78,7 +79,7 @@ CREATE TABLE event_passes (
 );
 
 -- Validation Logs Table
-CREATE TABLE validation_logs (
+CREATE TABLE IF NOT EXISTS validation_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     pass_id INT NOT NULL,
     validator_id INT NOT NULL,
@@ -92,24 +93,63 @@ CREATE TABLE validation_logs (
     INDEX idx_validation_time (validation_time)
 );
 
--- Analytics Table
-CREATE TABLE event_analytics (
+-- Analytics Table (UPDATED - removed fixed role fields)
+CREATE TABLE IF NOT EXISTS event_analytics (
     id INT AUTO_INCREMENT PRIMARY KEY,
     event_id INT NOT NULL,
     total_passes_generated INT DEFAULT 0,
     total_passes_validated INT DEFAULT 0,
-    judges_count INT DEFAULT 0,
-    mentors_count INT DEFAULT 0,
-    participants_count INT DEFAULT 0,
-    volunteers_count INT DEFAULT 0,
-    guests_count INT DEFAULT 0,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     INDEX idx_event (event_id)
 );
 
+-- NEW: Ticket Batches Table (for Normal/Gamify seat management)
+CREATE TABLE IF NOT EXISTS ticket_batches (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    batch_name VARCHAR(100) NOT NULL,
+    batch_type ENUM('normal', 'gamify') DEFAULT 'normal',
+    seat_count INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    INDEX idx_event (event_id)
+);
+
+-- NEW: Promotions Table (for discounts and free items)
+CREATE TABLE IF NOT EXISTS promotions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    promotion_name VARCHAR(100) NOT NULL,
+    promotion_type ENUM('free_item', 'discount_percent', 'discount_amount') NOT NULL,
+    value VARCHAR(100),
+    quantity INT DEFAULT 1,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    INDEX idx_event (event_id)
+);
+
+-- NEW: Tickets Table (with barcode and QR scanner support)
+CREATE TABLE IF NOT EXISTS tickets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    batch_id INT NOT NULL,
+    ticket_code VARCHAR(255) UNIQUE NOT NULL,
+    barcode VARCHAR(255) UNIQUE NOT NULL,
+    status ENUM('available', 'used', 'expired') DEFAULT 'available',
+    promotion_id INT,
+    price FLOAT DEFAULT 0.0,
+    scanned_by VARCHAR(100),
+    scanned_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (batch_id) REFERENCES ticket_batches(id) ON DELETE CASCADE,
+    FOREIGN KEY (promotion_id) REFERENCES promotions(id),
+    INDEX idx_batch (batch_id),
+    INDEX idx_ticket_code (ticket_code)
+);
+
 -- System Settings Table
-CREATE TABLE system_settings (
+CREATE TABLE IF NOT EXISTS system_settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     setting_key VARCHAR(100) UNIQUE NOT NULL,
     setting_value TEXT NOT NULL,
@@ -121,8 +161,10 @@ CREATE TABLE system_settings (
 INSERT INTO system_settings (setting_key, setting_value, description) VALUES
 ('encryption_key', 'CHANGE_THIS_SECRET_KEY_12345', 'Secret key for QR/Barcode encryption'),
 ('max_validation_attempts', '3', 'Maximum validation attempts per pass'),
-('pass_expiry_days', '30', 'Default pass expiry in days');
+('pass_expiry_days', '30', 'Default pass expiry in days')
+ON DUPLICATE KEY UPDATE setting_key=setting_key;
 
 -- Create default admin user (password: admin123)
 INSERT INTO users (username, email, password_hash, full_name, role) VALUES
-('admin', 'admin@eventticket.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5lWqVcXzF4tXC', 'System Administrator', 'admin');
+('admin', 'admin@eventticket.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5lWqVcXzF4tXC', 'System Administrator', 'admin')
+ON DUPLICATE KEY UPDATE username=username;
