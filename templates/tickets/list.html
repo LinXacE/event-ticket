@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Tickets - {{ event.event_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="mb-2">Tickets</h2>
+            <p class="mb-0 opacity-75">{{ event.event_name }}</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('tickets.create_batch', event_id=event.id) }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Batch
+            </a>
+            <a href="{{ url_for('tickets.create_promotion', event_id=event.id) }}" class="btn btn-success">
+                <i class="fas fa-gift"></i> Add Promotion
+            </a>
+        </div>
+    </div>
+
+    <!-- Tickets Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <ul class="nav nav-pills" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">All</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="used-tab" data-bs-toggle="tab" data-bs-target="#used" type="button" role="tab">Used</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="unused-tab" data-bs-toggle="tab" data-bs-target="#unused" type="button" role="tab">Unused</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-0">
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="all" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Ticket ({{ tickets|length }})</th>
+                                            <th>Code</th>
+                                            <th>Barcode</th>
+                                            <th>Status</th>
+                                            <th>Price</th>
+                                            <th>Scanner Name</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ticket in tickets %}
+                                        <tr>
+                                            <td>{{ loop.index }}</td>
+                                            <td><code>{{ ticket.ticket_code }}</code></td>
+                                            <td>
+                                                {% if ticket.status == 'available' %}
+                                                <img src="https://barcode.tec-it.com/barcode.ashx?data={{ ticket.barcode }}&code=Code128" alt="Barcode" style="height: 30px;">
+                                                {% else %}
+                                                {{ ticket.barcode }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if ticket.status == 'used' %}
+                                                <span class="badge bg-success">SCANNED</span>
+                                                {% elif ticket.status == 'expired' %}
+                                                <span class="badge bg-danger">EXPIRED</span>
+                                                {% else %}
+                                                <span class="badge bg-info">UNUSED</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ ticket.price }}</td>
+                                            <td>{{ ticket.scanned_by if ticket.scanned_by else '--' }}</td>
+                                            <td>
+                                                {% if ticket.status == 'available' %}
+                                                <button class="btn btn-sm btn-outline-primary scan-btn" data-ticket-id="{{ ticket.id }}">
+                                                    <i class="fas fa-qrcode"></i> Scan
+                                                </button>
+                                                {% else %}
+                                                <button class="btn btn-sm btn-outline-secondary" disabled>
+                                                    <i class="fas fa-check"></i> Scanned
+                                                </button>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="used" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Ticket</th>
+                                            <th>Code</th>
+                                            <th>Barcode</th>
+                                            <th>Price</th>
+                                            <th>Scanner Name</th>
+                                            <th>Scanned At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ticket in tickets if ticket.status == 'used' %}
+                                        <tr>
+                                            <td>{{ loop.index }}</td>
+                                            <td><code>{{ ticket.ticket_code }}</code></td>
+                                            <td>{{ ticket.barcode }}</td>
+                                            <td>{{ ticket.price }}</td>
+                                            <td>{{ ticket.scanned_by }}</td>
+                                            <td>{{ ticket.scanned_at.strftime('%Y-%m-%d %H:%M') if ticket.scanned_at else '--' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="unused" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Ticket</th>
+                                            <th>Code</th>
+                                            <th>Barcode</th>
+                                            <th>Price</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ticket in tickets if ticket.status == 'available' %}
+                                        <tr>
+                                            <td>{{ loop.index }}</td>
+                                            <td><code>{{ ticket.ticket_code }}</code></td>
+                                            <td>
+                                                <img src="https://barcode.tec-it.com/barcode.ashx?data={{ ticket.barcode }}&code=Code128" alt="Barcode" style="height: 30px;">
+                                            </td>
+                                            <td>{{ ticket.price }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary scan-btn" data-ticket-id="{{ ticket.id }}">
+                                                    <i class="fas fa-qrcode"></i> Scan
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle scan button clicks
+document.querySelectorAll('.scan-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const ticketId = this.getAttribute('data-ticket-id');
+        if (confirm('Scan this ticket?')) {
+            fetch(`/tickets/scan/${ticketId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Ticket scanned successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while scanning the ticket.');
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
