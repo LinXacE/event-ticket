@@ -149,13 +149,20 @@ def scan_ticket(ticket_id):
             })
         
         # Mark ticket as used
-        ticket.status = 'used'
-        ticket.scanned_by = current_user.username
-        from datetime import datetime
-        ticket.scanned_at = datetime.utcnow()
-        
-        db.session.commit()
-        
+                try:
+            ticket.status = 'used'
+            ticket.scanned_by = current_user.username
+            from datetime import datetime
+            ticket.scanned_at = datetime.utcnow()
+            
+            db.session.commit()
+                    except Exception as e:
+                                    db.session.rollback()
+                                    return jsonify({
+                                                        'success': False,
+                                                        'message': 'Error validating ticket'
+                                                    })
+            
         return jsonify({
             'success': True,
             'message': 'Ticket validated successfully',
