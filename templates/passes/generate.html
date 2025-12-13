@@ -43,15 +43,18 @@
                             <label for="pass_type" class="form-label fw-bold">
                                 <i class="fas fa-ticket-alt text-success me-2"></i>Pass Type
                             </label>
-                            <select class="form-select form-select-lg" id="pass_type" name="pass_type" required>
-                                <option value="" selected disabled>Select pass type...</option>
-                                <option value="Judge">Judge</option>
-                                <option value="Mentor">Mentor</option>
-                                <option value="Participant">Participant</option>
-                                <option value="Volunteer">Volunteer</option>
-                                <option value="VIP">VIP</option>
-                                <option value="Staff">Staff</option>
-                            </select>
+                            <input type="text" list="pass_type_options" class="form-control form-control-lg" id="pass_type" name="pass_type" placeholder="Enter custom or select from defaults" required>
+                <datalist id="pass_type_options">
+                    <option value="Judge">
+                    <option value="Mentor">
+                    <option value="Participant">
+                    <option value="Volunteer">
+                    <option value="VIP">
+                    <option value="Staff">
+                    <option value="Speaker">
+                    <option value="Sponsor">
+                </datalist>
+                <small class="form-text text-muted">Select a default type or type your own custom pass type</small>
                         </div>
 
                         <!-- Participant Name -->
