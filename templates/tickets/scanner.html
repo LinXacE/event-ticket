@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket Scanner{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2 class="mb-2"><i class="fas fa-qrcode"></i> Ticket Scanner</h2>
+            <p class="mb-0 opacity-75">Scan barcode or QR code tickets</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Scanner Section -->
+            <div class="card border-0 shadow-lg mb-4">
+                <div class="card-body p-4">
+                    <div id="scanner-container" style="max-width: 600px; margin: 0 auto;">
+                        <!-- QR Code Scanner Video -->
+                        <div id="reader" style="width: 100%; border: 2px solid #ddd; border-radius: 8px;"></div>
+                        
+                        <div class="text-center mt-3">
+                            <button id="start-scanner" class="btn btn-success btn-lg">
+                                <i class="fas fa-camera"></i> Start Scanner
+                            </button>
+                            <button id="stop-scanner" class="btn btn-danger btn-lg" style="display: none;">
+                                <i class="fas fa-stop"></i> Stop Scanner
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Manual Entry Option -->
+                    <div class="mt-4">
+                        <hr>
+                        <h5 class="text-center mb-3">Or Enter Code Manually</h5>
+                        <div class="input-group">
+                            <input type="text" id="manual-code" class="form-control form-control-lg" placeholder="Enter ticket/barcode">
+                            <button class="btn btn-primary" id="manual-submit">
+                                <i class="fas fa-check"></i> Validate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Section -->
+            <div id="scan-result" class="card border-0 shadow-sm" style="display: none;">
+                <div class="card-body p-4">
+                    <div id="result-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include html5-qrcode library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+let html5QrcodeScanner = null;
+let isScanning = false;
+
+// Initialize scanner
+function startScanner() {
+    const reader = document.getElementById('reader');
+    const startBtn = document.getElementById('start-scanner');
+    const stopBtn = document.getElementById('stop-scanner');
+    
+    if (isScanning) return;
+    
+    html5QrcodeScanner = new Html5Qrcode("reader");
+    
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    
+    html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText, decodedResult) => {
+            // Success callback
+            console.log(`Scanned: ${decodedText}`);
+            validateTicket(decodedText);
+            playBeep();
+        },
+        (errorMessage) => {
+            // Error callback (can be ignored for continuous scanning)
+        }
+    ).then(() => {
+        isScanning = true;
+        startBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-block';
+    }).catch((err) => {
+        alert('Unable to start scanner: ' + err);
+        console.error(err);
+    });
+}
+
+function stopScanner() {
+    if (!isScanning || !html5QrcodeScanner) return;
+    
+    html5QrcodeScanner.stop().then(() => {
+        isScanning = false;
+        document.getElementById('start-scanner').style.display = 'inline-block';
+        document.getElementById('stop-scanner').style.display = 'none';
+    }).catch((err) => {
+        console.error(err);
+    });
+}
+
+function validateTicket(code) {
+    // Stop scanner temporarily
+    if (isScanning) {
+        stopScanner();
+    }
+    
+    // Send to backend
+    fetch('/tickets/scan/by-code', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: code })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showResult(data);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showResult({
+            success: false,
+            message: 'An error occurred while validating the ticket'
+        });
+    });
+}
+
+function showResult(data) {
+    const resultDiv = document.getElementById('scan-result');
+    const contentDiv = document.getElementById('result-content');
+    
+    if (data.success) {
+        contentDiv.innerHTML = `
+            <div class="alert alert-success" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-check-circle"></i> Ticket Valid!</h4>
+                <p><strong>Code:</strong> ${data.ticket_code}</p>
+                <p><strong>Price:</strong> ${data.price}</p>
+                <p><strong>Scanned by:</strong> ${data.scanned_by}</p>
+                <hr>
+                <p class="mb-0">Ticket has been successfully validated.</p>
+            </div>
+        `;
+        playSuccessSound();
+    } else {
+        contentDiv.innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-times-circle"></i> Invalid Ticket</h4>
+                <p>${data.message}</p>
+                ${data.scanned_at ? `<p><small>Previously scanned at: ${data.scanned_at}</small></p>` : ''}
+                ${data.scanned_by ? `<p><small>Scanned by: ${data.scanned_by}</small></p>` : ''}
+            </div>
+        `;
+        playErrorSound();
+    }
+    
+    resultDiv.style.display = 'block';
+    
+    // Auto-restart scanner after 3 seconds
+    setTimeout(() => {
+        resultDiv.style.display = 'none';
+        if (!isScanning) {
+            startScanner();
+        }
+    }, 3000);
+}
+
+// Sound effects
+function playBeep() {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.1);
+}
+
+function playSuccessSound() {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+    oscillator.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.2);
+}
+
+function playErrorSound() {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+    oscillator.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.3);
+}
+
+// Event listeners
+document.getElementById('start-scanner').addEventListener('click', startScanner);
+document.getElementById('stop-scanner').addEventListener('click', stopScanner);
+
+document.getElementById('manual-submit').addEventListener('click', () => {
+    const code = document.getElementById('manual-code').value.trim();
+    if (code) {
+        validateTicket(code);
+        document.getElementById('manual-code').value = '';
+    }
+});
+
+document.getElementById('manual-code').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        document.getElementById('manual-submit').click();
+    }
+});
+</script>
+{% endblock %}
