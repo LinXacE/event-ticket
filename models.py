@@ -42,6 +42,14 @@ class Event(db.Model):
     def __repr__(self):
         return f'<Event {self.event_name}>'
 
+    @property
+        def date(self):
+                    return self.event_date
+
+    @property
+        def time(self):
+                    return self.event_time
+
 class PassType(db.Model):
     __tablename__ = 'pass_types'
     
@@ -122,3 +130,56 @@ class SystemSetting(db.Model):
     
     def __repr__(self):
         return f'<SystemSetting {self.setting_key}>'
+
+
+class TicketBatch(db.Model):
+        __tablename__ = 'ticket_batches'
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    batch_name = db.Column(db.String(100), nullable=False)
+    batch_type = db.Column(db.Enum('normal', 'gamify'), default='normal')
+    seat_count = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    tickets = db.relationship('Ticket', backref='batch', lazy=True, cascade='all, delete-orphan')
+    event = db.relationship('Event', backref='batches', lazy=True)
+
+    def __repr__(self):
+                return f'<TicketBatch {self.batch_name}>'
+
+class Promotion(db.Model):
+        __tablename__ = 'promotions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    promotion_name = db.Column(db.String(100), nullable=False)
+    promotion_type = db.Column(db.Enum('free_item', 'discount_percent', 'discount_amount'), nullable=False)
+    value = db.Column(db.String(100))
+    quantity = db.Column(db.Integer, default=1)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    event = db.relationship('Event', backref='promotions', lazy=True)
+
+    def __repr__(self):
+                return f'<Promotion {self.promotion_name}>'
+
+class Ticket(db.Model):
+        __tablename__ = 'tickets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    batch_id = db.Column(db.Integer, db.ForeignKey('ticket_batches.id'), nullable=False)
+    ticket_code = db.Column(db.String(255), unique=True, nullable=False)
+    barcode = db.Column(db.String(255), unique=True, nullable=False)
+    status = db.Column(db.Enum('available', 'used', 'expired'), default='available')
+    promotion_id = db.Column(db.Integer, db.ForeignKey('promotions.id'))
+    price = db.Column(db.Float, default=0.0)
+    scanned_by = db.Column(db.String(100))
+    scanned_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    promotion = db.relationship('Promotion', backref='tickets', lazy=True)
+
+    def __repr__(self):
+                return f'<Ticket {self.ticket_code}>'
