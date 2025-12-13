@@ -224,7 +224,7 @@ def scan_by_code():
             'message': f'Error: {str(e)}'
         }), 500
 
-    @tickets_bp.route('/scanner')
+@tickets_bp.route('/scanner')
 @login_required
 def scanner():
     """Ticket scanner page"""
