@@ -103,7 +103,7 @@
                     <a href="{{ url_for('passes.generate_form') }}" class="{% if 'pass' in request.endpoint %}active{% endif %}">
                         <i class="fas fa-qrcode me-2"></i>Generate Passes
                     </a>
-                    <a href="{{ url_for('validation.validation_page') }}" class="{% if 'validation' in request.endpoint %}active{% endif %}">
+                    <a href="{{ url_for('validation.validate_pass') }}" class="{% if 'validation' in request.endpoint %}active{% endif %}">
                         <i class="fas fa-check-circle me-2"></i>Validate Pass
                     </a>
                     <a href="{{ url_for('analytics.analytics_dashboard') }}">
