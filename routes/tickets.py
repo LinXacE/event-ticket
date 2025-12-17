@@ -5,52 +5,54 @@ from database import db
 from utils.barcode_generator import create_event_pass_barcode
 import secrets
 import string
+from datetime import datetime
+
 
 tickets_bp = Blueprint('tickets', __name__, url_prefix='/tickets')
+
 
 def generate_ticket_code(length=8):
     """Generate a random ticket code"""
     characters = string.ascii_uppercase + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
 
+
 @tickets_bp.route('/event/<int:event_id>')
 @login_required
 def list_tickets(event_id):
     """List all tickets for an event"""
     event = Event.query.get_or_404(event_id)
-    
-    # Check permission
+
+    # Permission check
     if event.organizer_id != current_user.id and current_user.role != 'admin':
         flash('You do not have permission to view these tickets', 'error')
         return redirect(url_for('dashboard.home'))
-    
-    # Get all batches and tickets
+
     batches = TicketBatch.query.filter_by(event_id=event_id).all()
     tickets = []
     for batch in batches:
         tickets.extend(batch.tickets)
-    
+
     return render_template('tickets/list.html', event=event, batches=batches, tickets=tickets)
+
 
 @tickets_bp.route('/batch/create/<int:event_id>', methods=['GET', 'POST'])
 @login_required
 def create_batch(event_id):
     """Create a new ticket batch"""
     event = Event.query.get_or_404(event_id)
-    
-    # Check permission
+
     if event.organizer_id != current_user.id and current_user.role != 'admin':
         flash('You do not have permission to create batches', 'error')
         return redirect(url_for('dashboard.home'))
-    
+
     if request.method == 'POST':
         try:
             batch_name = request.form.get('batch_name')
             batch_type = request.form.get('batch_type', 'normal')
             seat_count = int(request.form.get('seat_count', 0))
             price = float(request.form.get('price', 0.0))
-            
-            # Create batch
+
             batch = TicketBatch(
                 event_id=event_id,
                 batch_name=batch_name,
@@ -58,21 +60,20 @@ def create_batch(event_id):
                 seat_count=seat_count
             )
             db.session.add(batch)
-            db.session.flush()  # Get batch ID
-            
-            # Generate tickets for this batch
+            db.session.flush()  # get batch.id
+
             for i in range(seat_count):
                 ticket_code = generate_ticket_code()
-                barcode = f"TICKET-{event_id}-{batch.id}-{i+1}"
-                
-                # Generate barcode image
-                barcode_path = create_event_pass_barcode(
+                barcode = f"TICKET-{event_id}-{batch.id}-{i + 1}"
+
+                # generate barcode image (side effect)
+                create_event_pass_barcode(
                     barcode,
                     event.event_name,
-                    f"Ticket #{i+1}",
+                    f"Ticket #{i + 1}",
                     batch.batch_name
                 )
-                
+
                 ticket = Ticket(
                     batch_id=batch.id,
                     ticket_code=ticket_code,
@@ -80,35 +81,35 @@ def create_batch(event_id):
                     price=price
                 )
                 db.session.add(ticket)
-            
+
             db.session.commit()
             flash(f'Batch created successfully with {seat_count} tickets!', 'success')
             return redirect(url_for('tickets.list_tickets', event_id=event_id))
-        
+
         except Exception as e:
             db.session.rollback()
             flash(f'Error creating batch: {str(e)}', 'error')
-    
+
     return render_template('tickets/create_batch.html', event=event)
+
 
 @tickets_bp.route('/promotion/create/<int:event_id>', methods=['GET', 'POST'])
 @login_required
 def create_promotion(event_id):
     """Create a new promotion"""
     event = Event.query.get_or_404(event_id)
-    
-    # Check permission
+
     if event.organizer_id != current_user.id and current_user.role != 'admin':
         flash('You do not have permission to create promotions', 'error')
         return redirect(url_for('dashboard.home'))
-    
+
     if request.method == 'POST':
         try:
             promotion_name = request.form.get('promotion_name')
             promotion_type = request.form.get('promotion_type')
             value = request.form.get('value')
             quantity = int(request.form.get('quantity', 1))
-            
+
             promotion = Promotion(
                 event_id=event_id,
                 promotion_name=promotion_name,
@@ -118,51 +119,50 @@ def create_promotion(event_id):
             )
             db.session.add(promotion)
             db.session.commit()
-            
+
             flash('Promotion created successfully!', 'success')
             return redirect(url_for('tickets.list_tickets', event_id=event_id))
-        
+
         except Exception as e:
             db.session.rollback()
             flash(f'Error creating promotion: {str(e)}', 'error')
-    
+
     return render_template('tickets/create_promotion.html', event=event)
+
 
 @tickets_bp.route('/scan/<int:ticket_id>', methods=['POST'])
 @login_required
 def scan_ticket(ticket_id):
-    """Scan and validate a ticket"""
+    """Scan and validate a ticket by ID"""
     try:
         ticket = Ticket.query.get_or_404(ticket_id)
-        
+
         if ticket.status == 'used':
             return jsonify({
                 'success': False,
                 'message': 'Ticket already used',
                 'scanned_at': ticket.scanned_at.strftime('%Y-%m-%d %H:%M:%S') if ticket.scanned_at else None
             })
-        
+
         if ticket.status == 'expired':
             return jsonify({
                 'success': False,
                 'message': 'Ticket has expired'
             })
-        
-        # Mark ticket as used
+
         ticket.status = 'used'
         ticket.scanned_by = current_user.username
-        from datetime import datetime
         ticket.scanned_at = datetime.utcnow()
-        
+
         db.session.commit()
-           
+
         return jsonify({
             'success': True,
             'message': 'Ticket validated successfully',
             'ticket_code': ticket.ticket_code,
             'scanned_by': current_user.username
         })
-    
+
     except Exception as e:
         db.session.rollback()
         return jsonify({
@@ -170,23 +170,26 @@ def scan_ticket(ticket_id):
             'message': f'Error scanning ticket: {str(e)}'
         }), 500
 
+
 @tickets_bp.route('/scan/by-code', methods=['POST'])
 @login_required
 def scan_by_code():
-    """Scan ticket by barcode/QR code"""
+    """Scan ticket by ticket code or barcode"""
     try:
+        if not request.is_json:
+            return jsonify({'success': False, 'message': 'Invalid JSON request'}), 400
+
         code = request.json.get('code')
-        
+        if not code:
+            return jsonify({'success': False, 'message': 'Code is required'}), 400
+
         ticket = Ticket.query.filter(
             (Ticket.ticket_code == code) | (Ticket.barcode == code)
         ).first()
-        
+
         if not ticket:
-            return jsonify({
-                'success': False,
-                'message': 'Ticket not found'
-            }), 404
-        
+            return jsonify({'success': False, 'message': 'Ticket not found'}), 404
+
         if ticket.status == 'used':
             return jsonify({
                 'success': False,
@@ -194,21 +197,16 @@ def scan_by_code():
                 'scanned_at': ticket.scanned_at.strftime('%Y-%m-%d %H:%M:%S') if ticket.scanned_at else None,
                 'scanned_by': ticket.scanned_by
             })
-        
+
         if ticket.status == 'expired':
-            return jsonify({
-                'success': False,
-                'message': 'Ticket has expired'
-            })
-        
-        # Mark ticket as used
+            return jsonify({'success': False, 'message': 'Ticket has expired'})
+
         ticket.status = 'used'
         ticket.scanned_by = current_user.username
-        from datetime import datetime
         ticket.scanned_at = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Ticket validated successfully',
@@ -217,17 +215,16 @@ def scan_by_code():
             'scanned_by': current_user.username
         })
 
-        except Exception as e:
+    except Exception as e:
         db.session.rollback()
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
 
+
 @tickets_bp.route('/scanner')
 @login_required
 def scanner():
     """Ticket scanner page"""
     return render_template('tickets/scanner.html')
-    
-    
