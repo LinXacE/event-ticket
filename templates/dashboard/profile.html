@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}My Profile - SmartEvents{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4"><i class="fas fa-user-circle"></i> My Profile</h2>
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-control" name="full_name" value="{{ user.full_name }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" name="email" value="{{ user.email }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" class="form-control" name="phone" value="{{ user.phone or '' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">New Password (leave blank to keep current)</label>
+                    <input type="password" class="form-control" name="password" placeholder="Enter new password">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Profile</button>
+                <a href="{{ url_for('dashboard.home') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
