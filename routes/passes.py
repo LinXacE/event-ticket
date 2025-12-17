@@ -133,6 +133,14 @@ def generate_pass():
 
         if not analytics:
             analytics = EventAnalytics(event_id=event_id)
+
+        # Initialize None values to 0 to prevent NoneType errors
+        analytics.total_passes_generated = analytics.total_passes_generated or 0
+        analytics.judges_count = analytics.judges_count or 0
+        analytics.mentors_count = analytics.mentors_count or 0
+        analytics.participants_count = analytics.participants_count or 0
+        analytics.volunteers_count = analytics.volunteers_count or 0
+        analytics.guests_count = analytics.guests_count or 0
             db.session.add(analytics)
 
         analytics.total_passes_generated += quantity
