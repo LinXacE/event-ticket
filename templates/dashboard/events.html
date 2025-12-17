@@ -80,7 +80,7 @@
                                 <a href="{{ url_for('events.edit_event', event_id=event.id) }}"                                                    data-bs-toggle="modal" 
                                    class="btn btn-sm btn-outline-warning me-1">
                                     <i class="fas fa-edit"></i>
-                                </a>                                            <button class="btn btn-sm btn-outline-danger" 
+                                </a>
                                 <form method="POST" action="{{ url_for('events.delete_event', event_id=event.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete {{ event.name }}?');">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         <i class="fas fa-trash"></i>
