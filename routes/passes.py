@@ -141,7 +141,7 @@ def generate_pass():
         analytics.participants_count = analytics.participants_count or 0
         analytics.volunteers_count = analytics.volunteers_count or 0
         analytics.guests_count = analytics.guests_count or 0
-            db.session.add(analytics)
+        db.session.add(analytics)
 
         analytics.total_passes_generated += quantity
 
