@@ -34,8 +34,7 @@ def generate_form():
 @bp.route('/generate', methods=['POST'])
 @login_required
 def generate_pass():
-    event_id = request.form.get('event_id')
-    pass_type_name = request.form.get('pass_type')
+    event_id = int(request.form.get('event_id'))    pass_type_name = request.form.get('pass_type')
     quantity = int(request.form.get('quantity', 1))
 
     participant_name = request.form.get('participant_name', 'Participant')
