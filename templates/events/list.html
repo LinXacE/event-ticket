@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<script>
+    window.location.href = "{{ url_for('dashboard_bp.events') }}";
+</script>
+<div class="container text-center mt-5">
+    <p>Redirecting to events management...</p>
+</div>
+{% endblock %}
