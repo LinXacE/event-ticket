@@ -77,9 +77,9 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <span class="navbar-text text-white me-3">
+                        <a href="{{ url_for('dashboard.profile') }}" class="navbar-text text-white me-3" text-decoration-none>
                             <i class="fas fa-user-circle"></i> {{ current_user.full_name }}
-                        </span>
+                        </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('auth.logout') }}">
@@ -97,16 +97,16 @@
                     <a href="{{ url_for('dashboard.home') }}" class="{% if request.endpoint == 'dashboard.home' %}active{% endif %}">
                         <i class="fas fa-home me-2"></i>Dashboard
                     </a>
-                    <a href="#" class="{% if 'event' in request.endpoint %}active{% endif %}">
+                    <a href="{{ url_for('events.list_events') }}" class="{% if 'event' in request.endpoint %}active{% endif %}">
                         <i class="fas fa-calendar me-2"></i>Events
                     </a>
-                    <a href="#" class="{% if 'pass' in request.endpoint %}active{% endif %}">
+                    <a href="{{ url_for('passes.generate_form') }}" class="{% if 'pass' in request.endpoint %}active{% endif %}">
                         <i class="fas fa-qrcode me-2"></i>Generate Passes
                     </a>
-                    <a href="#" class="{% if 'validation' in request.endpoint %}active{% endif %}">
+                    <a href="{{ url_for('validation.validation_page') }}" class="{% if 'validation' in request.endpoint %}active{% endif %}">
                         <i class="fas fa-check-circle me-2"></i>Validate Pass
                     </a>
-                    <a href="#">
+                    <a href="{{ url_for('analytics.analytics_dashboard') }}">
                         <i class="fas fa-chart-bar me-2"></i>Analytics
                     </a>
                     <a href="{{ url_for('dashboard.settings') }}">

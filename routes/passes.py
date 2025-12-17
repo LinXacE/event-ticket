@@ -21,6 +21,10 @@ def generate_form():
 def generate_pass():
     event_id = request.form.get('event_id')
     pass_type_name = request.form.get('pass_type')  # Now getting name instead of ID
+        quantity = int(request.form.get('quantity', 1))
+    participant_name = request.form.get('participant_name', 'Participant')
+    participant_email = request.form.get('participant_email', '')
+    participant_phone = request.form.get('participant_phone', '')
     
     event = Event.query.get_or_404(event_id)
     
@@ -36,6 +40,7 @@ def generate_pass():
         )
         db.session.add(pass_type)
         db.session.flush()  # Get the IDt_or_404(pass_type_id)
+                pass_type_id = pass_type.id
     
     secret_key = os.getenv('ENCRYPTION_KEY', 'default-secret-key')
     generated_passes = []

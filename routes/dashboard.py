@@ -98,3 +98,22 @@ def analytics():
                          total_events=total_events,
                          total_passes=total_passes,
                          validated_passes=validated_passes)
+
+@bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+        if request.method == 'POST':
+                    current_user.full_name = request.form.get('full_name')
+                    current_user.email = request.form.get('email')
+                    current_user.phone = request.form.get('phone', '')
+
+        if request.form.get('password'):
+                        from flask_bcrypt import Bcrypt
+                        bcrypt = Bcrypt()
+                        current_user.password = bcrypt.generate_password_hash(request.form.get('password')).decode('utf-8')
+
+        db.session.commit()
+            flash('Profile updated successfully!', 'success')
+        return redirect(url_for('dashboard.profile'))
+
+    return render_template('dashboard/profile.html', user=current_user)
