@@ -77,17 +77,15 @@
                                                class="btn btn-sm btn-outline-primary me-1">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <button class="btn btn-sm btn-outline-warning me-1" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#editEventModal{{ event.id }}">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" 
-                                                    onclick="confirmDelete('{{ event.id }}', '{{ event.name }}')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                <a href="{{ url_for('events.edit_event', event_id=event.id) }}"                                                    data-bs-toggle="modal" 
+                                   class="btn btn-sm btn-outline-warning me-1">
+                                    <i class="fas fa-edit"></i>
+                                </a>                                            <button class="btn btn-sm btn-outline-danger" 
+                                <form method="POST" action="{{ url_for('events.delete_event', event_id=event.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete {{ event.name }}?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>                                    </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -160,10 +158,4 @@
 </style>
 
 <script>
-function confirmDelete(eventId, eventName) {
-    if (confirm('Are you sure you want to delete "' + eventName + '"?')) {
-        window.location.href = '/dashboard/events/' + eventId + '/delete';
-    }
-}
-</script>
 {% endblock %}
