@@ -136,25 +136,10 @@ def generate_pass():
 
         # Initialize None values to 0 to prevent NoneType errors
         analytics.total_passes_generated = analytics.total_passes_generated or 0
-        analytics.judges_count = analytics.judges_count or 0
-        analytics.mentors_count = analytics.mentors_count or 0
-        analytics.participants_count = analytics.participants_count or 0
-        analytics.volunteers_count = analytics.volunteers_count or 0
-        analytics.guests_count = analytics.guests_count or 0
         db.session.add(analytics)
 
         analytics.total_passes_generated += quantity
 
-        if pass_type.type_name == 'Judge':
-            analytics.judges_count += quantity
-        elif pass_type.type_name == 'Mentor':
-            analytics.mentors_count += quantity
-        elif pass_type.type_name == 'Participant':
-            analytics.participants_count += quantity
-        elif pass_type.type_name == 'Volunteer':
-            analytics.volunteers_count += quantity
-        else:
-            analytics.guests_count += quantity
 
         db.session.commit()
 
