@@ -22,7 +22,7 @@
         <div class="card-body">
             <select id="eventSelect" class="form-select" onchange="loadEventAnalytics()">
                 <option value="">-- Select an Event --</option>
-                <!-- Events will be loaded via JavaScript -->
+                {% for event in events %}                     <option value="{{ event.id }}">{{ event.event_name }}</option>                     {% endfor %}
             </select>
         </div>
     </div>
