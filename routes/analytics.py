@@ -19,7 +19,8 @@ bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 @login_required
 def index():
     """Analytics dashboard page"""
-    return render_template('analytics/index.html')
+        events = Event.query.filter_by(organizer_id=current_user.id).all()
+    return render_template('analytics/index.html', events=events)
 
 
 @bp.route('/data/<int:event_id>')

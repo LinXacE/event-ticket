@@ -56,7 +56,7 @@
                                     {% for event in events %}
                                     <tr>
                                         <td>
-                                            <strong>{{ event.name }}</strong>
+                                            <strong>{{ event.event_name }}</strong>
                                         </td>
                                         <td>{{ event.date.strftime('%b %d, %Y') }}</td>
                                         <td>{{ event.location or 'N/A' }}</td>
@@ -73,7 +73,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{{ url_for('dashboard.event_details', event_id=event.id) }}" 
+                                            <a href="{{ url_for('tickets.list_tickets', event_id=event.id) }}" 
                                                class="btn btn-sm btn-outline-primary me-1">
                                                 <i class="fas fa-eye"></i>
                                             </a>
@@ -81,7 +81,7 @@
                                    class="btn btn-sm btn-outline-warning me-1">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <form method="POST" action="{{ url_for('events.delete_event', event_id=event.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete {{ event.name }}?');">
+                                <form method="POST" action="{{ url_for('events.delete_event', event_id=event.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete {{ event.event_name }}?');">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         <i class="fas fa-trash"></i>
                                     </button>
