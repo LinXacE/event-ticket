@@ -168,3 +168,98 @@ ON DUPLICATE KEY UPDATE setting_key=setting_key;
 INSERT INTO users (username, email, password_hash, full_name, role) VALUES
 ('admin', 'admin@eventticket.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5lWqVcXzF4tXC', 'System Administrator', 'admin')
 ON DUPLICATE KEY UPDATE username=username;
+
+-- Gates Table (Multi-Gate Access Control)
+CREATE TABLE IF NOT EXISTS gates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    gate_name VARCHAR(100) NOT NULL,
+    gate_type ENUM('VIP', 'Staff', 'General', 'Participant', 'Judge', 'Custom') DEFAULT 'General',
+    gate_description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    INDEX idx_event (event_id),
+    INDEX idx_gate_type (gate_type)
+);
+
+-- Gate Access Rules Table (Which pass types can access which gates)
+CREATE TABLE IF NOT EXISTS gate_access_rules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    gate_id INT NOT NULL,
+    pass_type_id INT NOT NULL,
+    can_access BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (gate_id) REFERENCES gates(id) ON DELETE CASCADE,
+    FOREIGN KEY (pass_type_id) REFERENCES pass_types(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_gate_pass (gate_id, pass_type_id),
+    INDEX idx_gate (gate_id),
+    INDEX idx_pass_type (pass_type_id)
+);
+
+-- Gate Validation Logs Table (Track which gate each validation occurred at)
+CREATE TABLE IF NOT EXISTS gate_validation_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    validation_log_id INT NOT NULL,
+    gate_id INT NOT NULL,
+    gate_access_granted BOOLEAN DEFAULT TRUE,
+    gate_access_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (validation_log_id) REFERENCES validation_logs(id) ON DELETE CASCADE,
+    FOREIGN KEY (gate_id) REFERENCES gates(id) ON DELETE CASCADE,
+    INDEX idx_validation (validation_log_id),
+    INDEX idx_gate (gate_id)
+);
+
+-- Offline Validation Queue Table (Store validations done offline)
+CREATE TABLE IF NOT EXISTS offline_validation_queue (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pass_code VARCHAR(255) NOT NULL,
+    validator_id INT NOT NULL,
+    validation_status ENUM('success', 'failed', 'duplicate') NOT NULL,
+    validation_message TEXT,
+    gate_id INT,
+    validation_time TIMESTAMP NOT NULL,
+    sync_status ENUM('pending', 'synced', 'failed') DEFAULT 'pending',
+    synced_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_pass_code (pass_code),
+    INDEX idx_sync_status (sync_status),
+    INDEX idx_validation_time (validation_time)
+);
+
+-- Duplicate Alert Settings Table (Configurable time windows)
+CREATE TABLE IF NOT EXISTS duplicate_alert_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    time_window_minutes INT DEFAULT 5,
+    alert_enabled BOOLEAN DEFAULT TRUE,
+    notification_method ENUM('dashboard', 'email', 'both') DEFAULT 'dashboard',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_event (event_id)
+);
+
+-- Real-time Alerts Table (Store active alerts for dashboard)
+CREATE TABLE IF NOT EXISTS realtime_alerts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    alert_type ENUM('duplicate_entry', 'suspicious_activity', 'gate_violation', 'system_error') NOT NULL,
+    alert_message TEXT NOT NULL,
+    pass_id INT,
+    gate_id INT,
+    severity ENUM('low', 'medium', 'high', 'critical') DEFAULT 'medium',
+    is_acknowledged BOOLEAN DEFAULT FALSE,
+    acknowledged_by INT,
+    acknowledged_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (pass_id) REFERENCES event_passes(id) ON DELETE SET NULL,
+    FOREIGN KEY (gate_id) REFERENCES gates(id) ON DELETE SET NULL,
+    FOREIGN KEY (acknowledged_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_event (event_id),
+    INDEX idx_alert_type (alert_type),
+    INDEX idx_is_acknowledged (is_acknowledged),
+    INDEX idx_created_at (created_at)
+);
