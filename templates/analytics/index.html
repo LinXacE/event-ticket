@@ -2,8 +2,152 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Analytics</h2>
-    <p>Analytics features coming soon...</p>
-    <a href="{{ url_for('dashboard_bp.index') }}" class="btn btn-secondary">Back to Dashboard</a>
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Analytics Dashboard</h2>
+            <p>View comprehensive analytics and export data for your events</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('dashboard.home') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Event Selection -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-calendar"></i> Select Event</h5>
+        </div>
+        <div class="card-body">
+            <select id="eventSelect" class="form-select" onchange="loadEventAnalytics()">
+                <option value="">-- Select an Event --</option>
+                <!-- Events will be loaded via JavaScript -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Export Options -->
+    <div id="exportSection" class="card mb-4" style="display: none;">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-download"></i> Export Data (CSV)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <button class="btn btn-success w-100" onclick="exportAttendees()">
+                        <i class="fas fa-users"></i><br>
+                        Export Attendees
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-success w-100" onclick="exportValidationLogs()">
+                        <i class="fas fa-clipboard-check"></i><br>
+                        Export Validation Logs
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-success w-100" onclick="exportAnalytics()">
+                        <i class="fas fa-chart-bar"></i><br>
+                        Export Analytics
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-success w-100" onclick="exportGateStatistics()">
+                        <i class="fas fa-door-open"></i><br>
+                        Export Gate Stats
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Display -->
+    <div id="analyticsDisplay" class="card" style="display: none;">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Event Analytics</h5>
+        </div>
+        <div class="card-body">
+            <div id="analyticsContent">
+                <!-- Analytics will be loaded here -->
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+let selectedEventId = null;
+
+// Load events on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadEvents();
+});
+
+function loadEvents() {
+    // This would typically fetch from an API endpoint
+    // For now, populate from server-rendered data if available
+    const select = document.getElementById('eventSelect');
+    // Add events dynamically here
+}
+
+function loadEventAnalytics() {
+    const select = document.getElementById('eventSelect');
+    selectedEventId = select.value;
+    
+    if (!selectedEventId) {
+        document.getElementById('exportSection').style.display = 'none';
+        document.getElementById('analyticsDisplay').style.display = 'none';
+        return;
+    }
+    
+    document.getElementById('exportSection').style.display = 'block';
+    document.getElementById('analyticsDisplay').style.display = 'block';
+    
+    // Fetch analytics data
+    fetch(`/analytics/data/${selectedEventId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayAnalytics(data.data);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function displayAnalytics(data) {
+    const content = document.getElementById('analyticsContent');
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Total Passes Generated</h6>
+                <h3>${data.total_passes || 0}</h3>
+            </div>
+            <div class="col-md-6">
+                <h6>Total Passes Validated</h6>
+                <h3>${data.validated_passes || 0}</h3>
+            </div>
+        </div>
+    `;
+}
+
+function exportAttendees() {
+    if (!selectedEventId) return;
+    window.location.href = `/analytics/export/attendees/${selectedEventId}`;
+}
+
+function exportValidationLogs() {
+    if (!selectedEventId) return;
+    window.location.href = `/analytics/export/validation-logs/${selectedEventId}`;
+}
+
+function exportAnalytics() {
+    if (!selectedEventId) return;
+    window.location.href = `/analytics/export/analytics/${selectedEventId}`;
+}
+
+function exportGateStatistics() {
+    if (!selectedEventId) return;
+    window.location.href = `/analytics/export/gate-statistics/${selectedEventId}`;
+}
+</script>
 {% endblock %}
