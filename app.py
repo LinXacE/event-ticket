@@ -30,7 +30,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # Import routes after app initialization
-from routes import auth, events, passes, validation, analytics, dashboard, tickets
+from routes import auth, events, passes, validation, analytics, dashboard, tickets, gates
 
 # Register blueprints
 app.register_blueprint(auth.bp)
@@ -40,6 +40,7 @@ app.register_blueprint(validation.validation_bp)
 app.register_blueprint(analytics.bp)
 app.register_blueprint(dashboard.bp)
 app.register_blueprint(tickets.tickets_bp)
+app.register_blueprint(gates.bp)
 
 @app.route('/')
 def index():
