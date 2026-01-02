@@ -114,7 +114,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% if recent_events %}
+                    {% if events %}
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
@@ -127,10 +127,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for event in recent_events %}
+                                    {% for event in events %}
                                     <tr>
                                         <td>
-                                            <strong>{{ event.name }}</strong>
+                                            <strong>{{ event.event_name }}</strong>
                                         </td>
                                         <td>{{ event.date.strftime('%b %d, %Y') }}</td>
                                         <td>

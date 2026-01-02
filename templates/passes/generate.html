@@ -33,7 +33,7 @@
                             <select class="form-select form-select-lg" id="event_id" name="event_id" required>
                                 <option value="" selected disabled>Choose an event...</option>
                                 {% for event in events %}
-                                    <option value="{{ event.id }}">{{ event.name }} - {{ event.date.strftime('%B %d, %Y') }}</option>
+                                    <option value="{{ event.id }}">{{ event.event_name }} - {{ event.date.strftime('%B %d, %Y') }}</option>
                                 {% endfor %}
                             </select>
                         </div>

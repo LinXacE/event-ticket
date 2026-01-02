@@ -78,18 +78,6 @@
 <script>
 let selectedEventId = null;
 
-// Load events on page load
-document.addEventListener('DOMContentLoaded', function() {
-    loadEvents();
-});
-
-function loadEvents() {
-    // This would typically fetch from an API endpoint
-    // For now, populate from server-rendered data if available
-    const select = document.getElementById('eventSelect');
-    // Add events dynamically here
-}
-
 function loadEventAnalytics() {
     const select = document.getElementById('eventSelect');
     selectedEventId = select.value;

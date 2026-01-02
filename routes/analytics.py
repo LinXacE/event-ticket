@@ -19,7 +19,10 @@ bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 @login_required
 def index():
     """Analytics dashboard page"""
-    events = Event.query.filter_by(organizer_id=current_user.id).all()
+    if current_user.role == 'admin':
+        events = Event.query.all()
+    else:
+        events = Event.query.filter_by(organizer_id=current_user.id).all()
     return render_template('analytics/index.html', events=events)
 
 
