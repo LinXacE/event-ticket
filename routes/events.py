@@ -29,7 +29,7 @@ def create_event():
             max_participants = request.form.get('max_participants')
 
             # Validate required fields
-            if not all([name, date_str, time_str, location]):
+            if not all([name, date_str, time_str, location, max_participants]):
                 flash('Please fill in all required fields', 'error')
                 return render_template('events/create.html')
 
@@ -44,7 +44,7 @@ def create_event():
                 event_date=event_date,
                 event_time=event_time,
                 location=location,
-                total_capacity=int(max_participants) if max_participants else None,
+                total_capacity=int(max_participants),
                 organizer_id=current_user.id
             )
 
@@ -131,7 +131,7 @@ def edit_event(event_id):
             event.location = request.form.get('location')
 
             max_participants = request.form.get('max_participants')
-            event.total_capacity = int(max_participants) if max_participants else None
+            event.total_capacity = int(max_participants)
 
             db.session.commit()
             flash('Event updated successfully!', 'success')
