@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}{{ event.event_name }} - Event Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-2">{{ event.event_name }}</h2>
+                    <p class="mb-0 opacity-75">Event Details</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('dashboard.events') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Events
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Information -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-info-circle text-primary me-2"></i>Event Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong><i class="fas fa-calendar me-2"></i>Date:</strong>
+                            <p>{{ event.event_date.strftime('%B %d, %Y') }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong><i class="fas fa-clock me-2"></i>Time:</strong>
+                            <p>{{ event.event_time.strftime('%I:%M %p') }}</p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <strong><i class="fas fa-map-marker-alt me-2"></i>Location:</strong>
+                            <p>{{ event.location or 'Not specified' }}</p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <strong><i class="fas fa-align-left me-2"></i>Description:</strong>
+                            <p>{{ event.event_description or 'No description provided' }}</p>
+                        </div>
+                    </div>
+                    {% if event.total_capacity %}
+                    <div class="row">
+                        <div class="col-12">
+                            <strong><i class="fas fa-users me-2"></i>Capacity:</strong>
+                            <p>{{ event.total_capacity }} participants</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Statistics Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar text-primary me-2"></i>Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-ticket-alt me-2"></i>Total Passes:</span>
+                            <strong>{{ stats.total_passes }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-check-circle me-2 text-success"></i>Validated:</span>
+                            <strong>{{ stats.validated_passes }}</strong>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-clock me-2 text-warning"></i>Pending:</span>
+                            <strong>{{ stats.pending_passes }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-cog text-primary me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{{ url_for('events.edit_event', event_id=event.id) }}" class="btn btn-warning btn-block mb-2 w-100">
+                        <i class="fas fa-edit me-2"></i>Edit Event
+                    </a>
+                    <a href="{{ url_for('tickets.list_tickets', event_id=event.id) }}" class="btn btn-primary btn-block mb-2 w-100">
+                        <i class="fas fa-ticket-alt me-2"></i>View Tickets
+                    </a>
+                    <a href="{{ url_for('events.event_passes', event_id=event.id) }}" class="btn btn-info btn-block w-100">
+                        <i class="fas fa-id-card me-2"></i>View Passes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pass Types Section -->
+    {% if stats.pass_types %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-list text-primary me-2"></i>Pass Types Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Pass Type</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pass_type, count in stats.pass_types.items() %}
+                                <tr>
+                                    <td>{{ pass_type }}</td>
+                                    <td><span class="badge bg-primary">{{ count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Passes List Section -->
+    {% if passes %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-id-card-alt text-primary me-2"></i>Recent Passes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Pass Code</th>
+                                    <th>Participant</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pass in passes[:10] %}
+                                <tr>
+                                    <td><code>{{ pass.pass_code }}</code></td>
+                                    <td>{{ pass.participant_name or 'N/A' }}</td>
+                                    <td>{{ pass.pass_type.type_name if pass.pass_type else 'Unknown' }}</td>
+                                    <td>
+                                        {% if pass.is_validated %}
+                                        <span class="badge bg-success">Validated</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ pass.created_at.strftime('%Y-%m-%d') if pass.created_at else 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('events.event_passes', event_id=event.id) }}" class="btn btn-outline-primary">
+                            View All Passes <i class="fas fa-arrow-right ms-2"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
