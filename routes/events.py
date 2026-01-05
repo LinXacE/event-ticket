@@ -103,7 +103,12 @@ def edit_event(event_id):
             event.event_name = request.form.get('name')
             event.event_description = request.form.get('description')
             event.event_date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
-            event.event_time = datetime.strptime(request.form.get('time'), '%H:%M').time()
+                        time_str = request.form.get('time')
+            # Handle both HH:MM and HH:MM:SS formats
+            try:
+                event.event_time = datetime.strptime(time_str, '%H:%M:%S').time()
+            except ValueError:
+                event.event_time = datetime.strptime(time_str, '%H:%M').time()
             event.location = request.form.get('location')
             max_participants = request.form.get('max_participants')
             event.total_capacity = int(max_participants) if max_participants else None
