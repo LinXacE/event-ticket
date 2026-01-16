@@ -31,20 +31,22 @@ def validate_pass():
                 'message': 'No code provided'
             }), 400
         
-        # Decrypt the scanned code
-        try:
-            decrypted_data = cipher.decrypt(scanned_code.encode()).decode()
-            pass_data = json.loads(decrypted_data)
-            pass_id = pass_data.get('pass_id')
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'message': 'Invalid or corrupted code',
-                'error': str(e)
-            }), 400
+        # Try to find pass by pass_code first (for manual entry)
+        pass_obj = EventPass.query.filter_by(pass_code=scanned_code).first()
         
-        # Find the pass in database
-        pass_obj = EventPass.query.get(pass_id)
+        # If not found, try to decrypt as QR/encrypted data
+        if not pass_obj:
+            try:
+                decrypted_data = cipher.decrypt(scanned_code.encode()).decode()
+                pass_data = json.loads(decrypted_data)
+                pass_id = pass_data.get('pass_id')
+                pass_obj = EventPass.query.get(pass_id)
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid or corrupted code',
+                    'error': str(e)
+                }), 400
         
         if not pass_obj:
             return jsonify({
