@@ -164,10 +164,24 @@ document.getElementById('start-scanner').addEventListener('click', async () => {
         // Start scanning loop
         startScanning();
     } catch (error) {
+        console.error('Camera error:', error);
+        let errorMessage = 'Camera error: ';
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            errorMessage += 'Permission denied. Please allow camera access in your browser settings.';
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            errorMessage += 'No camera found. Please connect a camera device.';
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+            errorMessage += 'Camera is already in use by another application.';
+        } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+            errorMessage += 'Camera does not support rear-facing mode.';
+        } else {
+            errorMessage += error.message || 'Unknown error occurred';
+        }
+        
         document.getElementById('scanner-status').innerHTML = 
-            '<p class="text-danger mb-0"><i class="fas fa-exclamation-circle me-2"></i>Camera access denied</p>';
-    }
-});
+            `<p class="text-danger mb-0"><i class="fas fa-exclamation-circle me-2"></i>${errorMessage}</p>`;
+    }});
 
 // Stop scanner
 document.getElementById('stop-scanner').addEventListener('click', () => {
