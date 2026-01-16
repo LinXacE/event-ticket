@@ -164,6 +164,11 @@ def generate_pass():
 @login_required
 def view_passes(event_id):
     event = Event.query.get_or_404(event_id)
+        
+    # Security check: Only organizer can view their event passes
+    if event.organizer_id != current_user.id:
+        flash('You do not have permission to view these passes', 'danger')
+        return redirect(url_for('dashboard.dashboard'))
     passes = EventPass.query.filter_by(event_id=event_id).all()
     return render_template(
         'passes/view.html',
@@ -179,6 +184,11 @@ def view_passes(event_id):
 @login_required
 def download_pass(pass_id):
     pass_obj = EventPass.query.get_or_404(pass_id)
+        
+    # Security check: Only event organizer can download passes
+    if pass_obj.event.organizer_id != current_user.id:
+        flash('You do not have permission to download this pass', 'danger')
+        return redirect(url_for('dashboard.dashboard'))
     return render_template(
         'passes/download.html',
         pass_obj=pass_obj
