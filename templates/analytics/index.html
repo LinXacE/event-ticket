@@ -1,11 +1,13 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - SmartEvents{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-8">
             <h2>Analytics Dashboard</h2>
-            <p>View comprehensive analytics and export data for your events</p>
+            <p class="text-muted">View comprehensive analytics and export data for your events</p>
         </div>
         <div class="col-md-4 text-end">
             <a href="{{ url_for('dashboard.home') }}" class="btn btn-secondary">
@@ -22,120 +24,309 @@
         <div class="card-body">
             <select id="eventSelect" class="form-select" onchange="loadEventAnalytics()">
                 <option value="">-- Select an Event --</option>
-                {% for event in events %}                     <option value="{{ event.id }}">{{ event.event_name }}</option>                     {% endfor %}
+                {% for event in events %}
+                <option value="{{ event.id }}">{{ event.event_name }} - {{ event.event_date.strftime('%B %d, %Y') }}</option>
+                {% endfor %}
             </select>
         </div>
     </div>
 
-    <!-- Export Options -->
-    <div id="exportSection" class="card mb-4" style="display: none;">
-        <div class="card-header bg-success text-white">
-            <h5 class="mb-0"><i class="fas fa-download"></i> Export Data (CSV)</h5>
-        </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <button class="btn btn-success w-100" onclick="exportAttendees()">
-                        <i class="fas fa-users"></i><br>
-                        Export Attendees
-                    </button>
+    <!-- Analytics Content (Hidden until event is selected) -->
+    <div id="analyticsContent" style="display: none;">
+        
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-gradient-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-white-50">Total Passes</h6>
+                                <h2 id="totalPasses">0</h2>
+                            </div>
+                            <div>
+                                <i class="fas fa-ticket-alt fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <button class="btn btn-success w-100" onclick="exportValidationLogs()">
-                        <i class="fas fa-clipboard-check"></i><br>
-                        Export Validation Logs
-                    </button>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-gradient-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-white-50">Validated</h6>
+                                <h2 id="validatedPasses">0</h2>
+                            </div>
+                            <div>
+                                <i class="fas fa-check-circle fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <button class="btn btn-success w-100" onclick="exportAnalytics()">
-                        <i class="fas fa-chart-bar"></i><br>
-                        Export Analytics
-                    </button>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-gradient-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-white-50">Pending</h6>
+                                <h2 id="pendingPasses">0</h2>
+                            </div>
+                            <div>
+                                <i class="fas fa-clock fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <button class="btn btn-success w-100" onclick="exportGateStatistics()">
-                        <i class="fas fa-door-open"></i><br>
-                        Export Gate Stats
-                    </button>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-gradient-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-white-50">Validation Rate</h6>
+                                <h2 id="validationRate">0%</h2>
+                            </div>
+                            <div>
+                                <i class="fas fa-chart-line fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Validation Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="validationChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Pass Types Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="passTypesChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Options -->
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-download"></i> Export Data</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Download comprehensive reports for your event</p>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-success w-100" onclick="exportAttendees()">
+                            <i class="fas fa-users me-2"></i>
+                            Attendee List
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-success w-100" onclick="exportValidationLogs()">
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            Validation Logs
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-success w-100" onclick="exportAnalytics()">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Analytics Summary
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-success w-100" onclick="exportGateStats()">
+                            <i class="fas fa-door-open me-2"></i>
+                            Gate Statistics
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Analytics Display -->
-    <div id="analyticsDisplay" class="card" style="display: none;">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Event Analytics</h5>
-        </div>
-        <div class="card-body">
-            <div id="analyticsContent">
-                <!-- Analytics will be loaded here -->
-            </div>
-        </div>
+    <!-- Empty State -->
+    <div id="emptyState" class="text-center py-5">
+        <i class="fas fa-chart-bar fa-5x text-muted mb-3"></i>
+        <h4 class="text-muted">Select an event to view analytics</h4>
+        <p class="text-muted">Choose an event from the dropdown above to see detailed statistics and reports</p>
     </div>
+
 </div>
 
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .bg-gradient-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    .bg-gradient-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+    .bg-gradient-info {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
-let selectedEventId = null;
+let currentEventId = null;
+let validationChart = null;
+let passTypesChart = null;
 
 function loadEventAnalytics() {
     const select = document.getElementById('eventSelect');
-    selectedEventId = select.value;
+    currentEventId = select.value;
     
-    if (!selectedEventId) {
-        document.getElementById('exportSection').style.display = 'none';
-        document.getElementById('analyticsDisplay').style.display = 'none';
+    if (!currentEventId) {
+        document.getElementById('analyticsContent').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
         return;
     }
     
-    document.getElementById('exportSection').style.display = 'block';
-    document.getElementById('analyticsDisplay').style.display = 'block';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('analyticsContent').style.display = 'block';
     
     // Fetch analytics data
-    fetch(`/analytics/data/${selectedEventId}`)
+    fetch(`/analytics/data/${currentEventId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                displayAnalytics(data.data);
+                updateStatistics(data.data);
+                updateCharts(data.data);
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error loading analytics:', error);
+            alert('Failed to load analytics data');
+        });
 }
 
-function displayAnalytics(data) {
-    const content = document.getElementById('analyticsContent');
-    content.innerHTML = `
-        <div class="row">
-            <div class="col-md-6">
-                <h6>Total Passes Generated</h6>
-                <h3>${data.total_passes || 0}</h3>
-            </div>
-            <div class="col-md-6">
-                <h6>Total Passes Validated</h6>
-                <h3>${data.validated_passes || 0}</h3>
-            </div>
-        </div>
-    `;
+function updateStatistics(data) {
+    document.getElementById('totalPasses').textContent = data.total_passes || 0;
+    document.getElementById('validatedPasses').textContent = data.validated_passes || 0;
+    document.getElementById('pendingPasses').textContent = (data.total_passes - data.validated_passes) || 0;
+    
+    const rate = data.total_passes > 0 
+        ? ((data.validated_passes / data.total_passes) * 100).toFixed(1)
+        : 0;
+    document.getElementById('validationRate').textContent = rate + '%';
+}
+
+function updateCharts(data) {
+    const validated = data.validated_passes || 0;
+    const pending = (data.total_passes - data.validated_passes) || 0;
+    
+    // Validation Chart
+    const validationCtx = document.getElementById('validationChart').getContext('2d');
+    if (validationChart) validationChart.destroy();
+    validationChart = new Chart(validationCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Validated', 'Pending'],
+            datasets: [{
+                data: [validated, pending],
+                backgroundColor: ['#10b981', '#f59e0b'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Pass Types Chart (using available data)
+    const passTypesCtx = document.getElementById('passTypesChart').getContext('2d');
+    if (passTypesChart) passTypesChart.destroy();
+    passTypesChart = new Chart(passTypesCtx, {
+        type: 'bar',
+        data: {
+            labels: ['VIP', 'General', 'Staff', 'Participant'],
+            datasets: [{
+                label: 'Passes Generated',
+                data: [
+                    data.judges || 0,
+                    data.participants || 0,
+                    data.volunteers || 0,
+                    data.guests || 0
+                ],
+                backgroundColor: '#667eea',
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
 }
 
 function exportAttendees() {
-    if (!selectedEventId) return;
-    window.location.href = `/analytics/export/attendees/${selectedEventId}`;
+    if (!currentEventId) {
+        alert('Please select an event first');
+        return;
+    }
+    window.location.href = `/analytics/export/attendees/${currentEventId}`;
 }
 
 function exportValidationLogs() {
-    if (!selectedEventId) return;
-    window.location.href = `/analytics/export/validation-logs/${selectedEventId}`;
+    if (!currentEventId) {
+        alert('Please select an event first');
+        return;
+    }
+    window.location.href = `/analytics/export/validation-logs/${currentEventId}`;
 }
 
 function exportAnalytics() {
-    if (!selectedEventId) return;
-    window.location.href = `/analytics/export/analytics/${selectedEventId}`;
+    if (!currentEventId) {
+        alert('Please select an event first');
+        return;
+    }
+    window.location.href = `/analytics/export/analytics/${currentEventId}`;
 }
 
-function exportGateStatistics() {
-    if (!selectedEventId) return;
-    window.location.href = `/analytics/export/gate-statistics/${selectedEventId}`;
+function exportGateStats() {
+    if (!currentEventId) {
+        alert('Please select an event first');
+        return;
+    }
+    window.location.href = `/analytics/export/gate-statistics/${currentEventId}`;
 }
 </script>
+
 {% endblock %}
