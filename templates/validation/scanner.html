@@ -150,6 +150,20 @@ let scanningInterval = null;
 document.getElementById('start-scanner').addEventListener('click', async () => {
     try {
         const video = document.getElementById('scanner-video');
+                    // Request camera permission from user
+            const permissionGranted = confirm(
+                '📷 Camera Access Required\n\n' +
+                'This QR scanner needs access to your camera to scan event passes. ' +
+                'Please click "Allow" when your browser asks for camera permission.\n\n' +
+                'Click OK to enable camera access.'
+            );
+            
+            if (!permissionGranted) {
+                document.getElementById('scanner-status').innerHTML = 
+                    '<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Camera access was cancelled. Please enable camera to scan passes.</p>';
+                return;
+            }
+
         videoStream = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: 'environment' } 
         });
