@@ -36,7 +36,10 @@ db.init_app(app)
 bcrypt = Bcrypt(app)
 
 # Import all models BEFORE creating tables
-from models import User, Event, PassType, EventPass, ValidationLog, EventAnalytics
+from models import (User, Event, PassType, EventPass, ValidationLog, EventAnalytics, 
+                   RealtimeAlert, EventAnalyticsSnapshot, TicketBatch, Promotion, 
+                   Ticket, Gate, GateAccessRule, GateValidationLog, 
+                   OfflineValidationQueue, DuplicateAlertSetting)
 
 # Initialize database tables
 with app.app_context():
