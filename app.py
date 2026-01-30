@@ -35,6 +35,9 @@ app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216)
 db.init_app(app)
 bcrypt = Bcrypt(app)
 
+# Import all models BEFORE creating tables
+from models import User, Event, PassType, EventPass, ValidationLog, EventAnalytics
+
 # Initialize database tables
 with app.app_context():
     db.create_all()
@@ -48,7 +51,6 @@ login_manager.login_message_category = 'info'
 # User loader function
 @login_manager.user_loader
 def load_user(user_id):
-    from models import User
     return User.query.get(int(user_id))
 
 
