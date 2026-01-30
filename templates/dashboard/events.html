@@ -58,7 +58,7 @@
                                         <td>
                                             <strong>{{ event.event_name }}</strong>
                                         </td>
-                                        <td>{{ event_date('%b %d, %Y') }}</td>
+                                        <td>{{ event.event_date.strftime('%b %d, %Y') }}</td>
                                         <td>{{ event.location or 'N/A' }}</td>
                                         <td>
                                             <span class="badge bg-primary">{{ event.passes|length }}</span>
