@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from database import db
-from flask_login  import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from datetime import datetime, timedelta
 import os
@@ -10,19 +10,25 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
+
+# Security config (IMPROVED)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
+
+# Database config (keep MySQL commented for reference)
 # app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), 'site.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))
 
 # Initialize extensions
 db.init_app(app)
 bcrypt = Bcrypt(app)
+
 login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'auth.login'  # FIXED: Added 'auth.' prefix
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
+
 
 # User loader function
 @login_manager.user_loader
@@ -30,8 +36,11 @@ def load_user(user_id):
     from models import User
     return User.query.get(int(user_id))
 
+
 # Import routes after app initialization
 from routes import auth, events, passes, validation, analytics, dashboard, tickets, gates
+from routes.rbac import rbac_bp  # NEW: Admin dashboard and user management
+from routes.ticket_types import ticket_types_bp  # NEW: Multiple ticket types per event
 
 # Register blueprints
 app.register_blueprint(auth.bp)
@@ -42,6 +51,9 @@ app.register_blueprint(analytics.bp)
 app.register_blueprint(dashboard.bp)
 app.register_blueprint(tickets.tickets_bp)
 app.register_blueprint(gates.bp)
+app.register_blueprint(rbac_bp)  # NEW
+app.register_blueprint(ticket_types_bp)  # NEW
+
 
 @app.route('/')
 def index():
@@ -49,14 +61,17 @@ def index():
         return redirect(url_for('dashboard.home'))
     return redirect(url_for('auth.login'))
 
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('errors/404.html'), 404
+
 
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
     return render_template('errors/500.html'), 500
+
 
 @app.context_processor
 def utility_processor():
@@ -65,6 +80,7 @@ def utility_processor():
             return ''
         return value.strftime(format)
     return dict(format_datetime=format_datetime)
+
 
 if __name__ == '__main__':
     # Create directories if they don't exist
