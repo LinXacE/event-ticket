@@ -278,4 +278,74 @@ class RealtimeAlert(db.Model):
     acknowledger = db.relationship('User', backref='acknowledged_alerts', lazy=True, foreign_keys=[acknowledged_by])
     
     def __repr__(self):
+
+# ==================== NEW MODELS FOR UNIVERSITY-LEVEL FEATURES ====================
+
+class TicketType(db.Model):
+    """Different ticket types per event (Normal, VIP, Student, Early Bird, etc.)"""
+    __tablename__ = 'ticket_types'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    type_name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    max_quantity = db.Column(db.Integer, nullable=False)
+    quantity_generated = db.Column(db.Integer, default=0)
+    price = db.Column(db.Float, default=0.0)
+    color_code = db.Column(db.String(7), default='#007bff')
+    access_level = db.Column(db.Integer, default=1)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    event = db.relationship('Event', backref='ticket_types', lazy=True)
+    
+    def __repr__(self):
+        return f'<TicketType {self.type_name}>'
+    
+    @property
+    def remaining_quantity(self):
+        return self.max_quantity - self.quantity_generated
+
+
+class TicketValidationLog(db.Model):
+    """Enhanced validation logging with detailed tracking."""
+    __tablename__ = 'ticket_validation_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=False)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    validator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    gate_name = db.Column(db.String(100))
+    validation_status = db.Column(db.Enum('success', 'failed', 'duplicate', 'expired'), default='success')
+    validation_message = db.Column(db.Text)
+    validation_time = db.Column(db.DateTime, default=datetime.utcnow)
+    ip_address = db.Column(db.String(45))
+    
+    ticket = db.relationship('Ticket', backref='detailed_logs', lazy=True)
+    event = db.relationship('Event', backref='validation_logs_detailed', lazy=True)
+    validator = db.relationship('User', backref='ticket_validations', lazy=True)
+    
+    def __repr__(self):
+        return f'<TicketValidationLog {self.validation_status}>'
+
+
+class EventAnalyticsSnapshot(db.Model):
+    """Analytics snapshots for events (for reports and dashboards)."""
+    __tablename__ = 'event_analytics_snapshots'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    total_tickets_generated = db.Column(db.Integer, default=0)
+    total_tickets_scanned = db.Column(db.Integer, default=0)
+    no_show_count = db.Column(db.Integer, default=0)
+    duplicate_attempts = db.Column(db.Integer, default=0)
+    scan_by_gate = db.Column(db.JSON)
+    scan_by_type = db.Column(db.JSON)
+    peak_scan_hour = db.Column(db.String(5))
+    captured_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    event = db.relationship('Event', backref='analytics_snapshots', lazy=True)
+    
+    def __repr__(self):
+        return f'<EventAnalyticsSnapshot Event:{self.event_id}>'
         return f'<RealtimeAlert {self.alert_type} - {self.severity}>'
