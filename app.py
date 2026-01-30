@@ -35,6 +35,10 @@ app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216)
 db.init_app(app)
 bcrypt = Bcrypt(app)
 
+# Initialize database tables
+with app.app_context():
+    db.create_all()
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'auth.login'  # FIXED: Added 'auth.' prefix
 login_manager.login_message = 'Please log in to access this page.'
