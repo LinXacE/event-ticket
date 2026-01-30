@@ -182,3 +182,18 @@ class EventAnalyticsSnapshot(db.Model):
 
     def __repr__(self):
         return f'<EventAnalyticsSnapshot Event:{self.event_id}>'
+
+# ================= TICKET BATCH =================
+
+class TicketBatch(db.Model):
+    __tablename__ = 'ticket_batches'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    batch_name = db.Column(db.String(100), nullable=False)
+    batch_type = db.Column(db.Enum('normal', 'gamify', name='batch_types'), default='normal')
+    seat_count = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<TicketBatch {self.batch_name}>'
