@@ -237,3 +237,86 @@ class Ticket(db.Model):
     
     def __repr__(self):
         return f'<Ticket {self.ticket_code}>'
+
+# ================= GATE =================
+
+class Gate(db.Model):
+    __tablename__ = 'gates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    gate_name = db.Column(db.String(100), nullable=False)
+    gate_type = db.Column(db.Enum('VIP', 'Staff', 'General', 'Participant', 'Judge', 'Custom', name='gate_types'), default='General')
+    gate_description = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    access_rules = db.relationship('GateAccessRule', backref='gate', lazy=True, cascade='all, delete-orphan')
+    validation_logs = db.relationship('GateValidationLog', backref='gate', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Gate {self.gate_name}>'
+
+# ================= GATE ACCESS RULE =================
+
+class GateAccessRule(db.Model):
+    __tablename__ = 'gate_access_rules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    gate_id = db.Column(db.Integer, db.ForeignKey('gates.id'), nullable=False)
+    pass_type_id = db.Column(db.Integer, db.ForeignKey('pass_types.id'), nullable=False)
+    can_access = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<GateAccessRule Gate:{self.gate_id} PassType:{self.pass_type_id}>'
+
+# ================= GATE VALIDATION LOG =================
+
+class GateValidationLog(db.Model):
+    __tablename__ = 'gate_validation_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    validation_log_id = db.Column(db.Integer, db.ForeignKey('validation_logs.id'), nullable=False)
+    gate_id = db.Column(db.Integer, db.ForeignKey('gates.id'), nullable=False)
+    gate_access_granted = db.Column(db.Boolean, default=True)
+    gate_access_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<GateValidationLog {self.id}>'
+
+# ================= OFFLINE VALIDATION QUEUE =================
+
+class OfflineValidationQueue(db.Model):
+    __tablename__ = 'offline_validation_queue'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    pass_code = db.Column(db.String(255), nullable=False)
+    validator_id = db.Column(db.Integer, nullable=False)
+    validation_status = db.Column(db.Enum('success', 'failed', 'duplicate', name='offline_validation_status'), nullable=False)
+    validation_message = db.Column(db.Text)
+    gate_id = db.Column(db.Integer)
+    validation_time = db.Column(db.DateTime, nullable=False)
+    sync_status = db.Column(db.Enum('pending', 'synced', 'failed', name='sync_status'), default='pending')
+    synced_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<OfflineValidationQueue {self.pass_code} - {self.sync_status}>'
+
+# ================= DUPLICATE ALERT SETTING =================
+
+class DuplicateAlertSetting(db.Model):
+    __tablename__ = 'duplicate_alert_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    time_window_minutes = db.Column(db.Integer, default=5)
+    alert_enabled = db.Column(db.Boolean, default=True)
+    notification_method = db.Column(db.Enum('dashboard', 'email', 'both', name='notification_methods'), default='dashboard')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<DuplicateAlertSetting Event:{self.event_id}>'
