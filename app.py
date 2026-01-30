@@ -12,12 +12,23 @@ load_dotenv()
 app = Flask(__name__)
 
 # Security config (IMPROVED)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
+# FIXED: Stable secret key (stops session resets on restart)
+import secrets
+import hashlib
+
+# Generate stable SECRET_KEY from env or create one
+if not os.getenv('SECRET_KEY'):
+    # Create stable key based on machine-specific data
+    machine_id = str(os.getcwd()) + str(os.getuid() if hasattr(os, 'getuid') else 'windows')
+    app.config['SECRET_KEY'] = hashlib.sha256(machine_id.encode()).hexdigest()
+else:
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 # Database config (keep MySQL commented for reference)
 # app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), 'site.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True, 'pool_recycle': 300}  # FIXED: SQLAlchemy 2.0 compatibility
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))
 
 # Initialize extensions
