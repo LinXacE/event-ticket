@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
 from database import db
-from models import Event, TicketType
+from models import Event, PassType
 from utils.decorators import organizer_or_admin
 
 ticket_types_bp = Blueprint('ticket_types', __name__, url_prefix='/ticket-types')
@@ -16,7 +16,7 @@ def manage_ticket_types(event_id):
         flash('Permission denied.', 'error')
         return redirect(url_for('events.list_events'))
     
-    ticket_types = TicketType.query.filter_by(event_id=event_id).all()
+    ticket_types = PassType.query.filter_by(event_id=event_id).all()
     return render_template('ticket_types/manage.html', event=event, ticket_types=ticket_types)
 
 @ticket_types_bp.route('/event/<int:event_id>/create', methods=['POST'])
@@ -32,7 +32,7 @@ def create_ticket_type(event_id):
     if not type_name:
         return jsonify({'error': 'Type name is required'}), 400
     
-    ticket_type = TicketType(
+    ticket_type = PassType(
         event_id=event_id,
         type_name=type_name,
         description=request.form.get('description', ''),
@@ -52,7 +52,7 @@ def create_ticket_type(event_id):
 @login_required
 def update_ticket_type(type_id):
     """Update a ticket type."""
-    ticket_type = TicketType.query.get_or_404(type_id)
+    ticket_type = PassType.query.get_or_404(type_id)
     event = ticket_type.event
     
     if event.organizer_id != current_user.id and current_user.role != 'admin':
@@ -72,7 +72,7 @@ def update_ticket_type(type_id):
 @login_required
 def delete_ticket_type(type_id):
     """Delete a ticket type."""
-    ticket_type = TicketType.query.get_or_404(type_id)
+    ticket_type = PassType.query.get_or_404(type_id)
     event_id = ticket_type.event_id
     event = ticket_type.event
     
@@ -87,7 +87,7 @@ def delete_ticket_type(type_id):
 @ticket_types_bp.route('/event/<int:event_id>/api', methods=['GET'])
 def get_event_ticket_types(event_id):
     """Get ticket types for an event as JSON (for frontend)."""
-    ticket_types = TicketType.query.filter_by(event_id=event_id).all()
+    ticket_types = PassType.query.filter_by(event_id=event_id).all()
     return jsonify([{
         'id': t.id,
         'type_name': t.type_name,
