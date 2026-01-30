@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from database import db
-from models import User, Event, TicketValidationLog, Ticket
+from models import User, Event, ValidationLog, Ticket
 from utils.decorators import admin_only, organizer_or_admin
 from datetime import datetime, timedelta
 
@@ -24,8 +24,8 @@ def admin_dashboard():
     total_scanned = Ticket.query.filter_by(status='used').count()
     
     recent_events = Event.query.order_by(Event.created_at.desc()).limit(5).all()
-    recent_validations = TicketValidationLog.query.order_by(
-        TicketValidationLog.validation_time.desc()
+    recent_validations = ValidationLog.query.order_by(
+        ValidationLog.validation_time.desc()
     ).limit(10).all()
     
     stats = {
