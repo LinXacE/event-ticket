@@ -263,3 +263,62 @@ CREATE TABLE IF NOT EXISTS realtime_alerts (
     INDEX idx_is_acknowledged (is_acknowledged),
     INDEX idx_created_at (created_at)
 );
+
+-- ==================== NEW TABLES FOR UNIVERSITY FEATURES ====================
+
+-- Add ticket_types table (for VIP, Normal, Student tickets per event)
+CREATE TABLE IF NOT EXISTS ticket_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    max_quantity INT NOT NULL,
+    quantity_generated INT DEFAULT 0,
+    price FLOAT DEFAULT 0.0,
+    color_code VARCHAR(7) DEFAULT '#007bff',
+    access_level INT DEFAULT 1,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add ticket_validation_logs table (detailed validation tracking)
+CREATE TABLE IF NOT EXISTS ticket_validation_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ticket_id INT NOT NULL,
+    event_id INT NOT NULL,
+    validator_id INT NOT NULL,
+    gate_name VARCHAR(100),
+    validation_status ENUM('success', 'failed', 'duplicate', 'expired') DEFAULT 'success',
+    validation_message TEXT,
+    validation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45),
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (validator_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add event_analytics_snapshots table (for reports and dashboards)
+CREATE TABLE IF NOT EXISTS event_analytics_snapshots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    total_tickets_generated INT DEFAULT 0,
+    total_tickets_scanned INT DEFAULT 0,
+    no_show_count INT DEFAULT 0,
+    duplicate_attempts INT DEFAULT 0,
+    scan_by_gate JSON,
+    scan_by_type JSON,
+    peak_scan_hour VARCHAR(5),
+    captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Modify existing tickets table (add new columns)
+ALTER TABLE tickets 
+ADD COLUMN IF NOT EXISTS ticket_type_id INT AFTER batch_id,
+ADD COLUMN IF NOT EXISTS scanned_gate VARCHAR(100) AFTER scanned_by;
+
+-- Add foreign key constraint for ticket_type_id (only if not exists)
+ALTER TABLE tickets 
+ADD CONSTRAINT fk_tickets_ticket_type 
+FOREIGN KEY (ticket_type_id) REFERENCES ticket_types(id) ON DELETE SET NULL;
