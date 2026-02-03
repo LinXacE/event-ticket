@@ -34,7 +34,7 @@ def generate_form():
 @bp.route('/generate', methods=['POST'])
 @login_required
 def generate_pass():
-    event_id = int(request.form.get('event_id'))   
+    event_id = int(request.form.get('event_id'))
     pass_type_name = request.form.get('pass_type')
     quantity = int(request.form.get('quantity', 1))
 
@@ -62,7 +62,6 @@ def generate_pass():
         db.session.flush()  # Get generated ID
         pass_type_id = pass_type.id
 
-    secret_key = os.getenv('ENCRYPTION_KEY', 'default-secret-key')
     generated_passes = []
 
     try:
@@ -74,28 +73,23 @@ def generate_pass():
                 i + 1
             )
 
-            pass_data = {
-                'event_id': event_id,
-                'participant_id': i + 1,
-                'pass_type_id': pass_type_id
-            }
-
             display_name = (
                 f"{participant_name} {i + 1}"
                 if quantity > 1 else participant_name
             )
 
-            # Generate QR code
-            qr_path, encrypted_data = create_event_pass_qr(
-                pass_data,
+            # ✅ Generate QR code that contains ONLY pass_code
+            qr_path, qr_payload = create_event_pass_qr(
                 pass_code,
                 event.event_name,
                 display_name,
-                pass_type.type_name,
-                secret_key
+                pass_type.type_name
             )
 
-            # Generate barcode
+            # ✅ Store qr_payload into encrypted_data for backward compatibility
+            encrypted_data = qr_payload
+
+            # Generate barcode (barcode already uses pass_code)
             barcode_path = create_event_pass_barcode(
                 pass_code,
                 event.event_name,
@@ -110,7 +104,7 @@ def generate_pass():
                 event_id=event_id,
                 pass_type_id=pass_type_id,
                 pass_code=pass_code,
-                encrypted_data=encrypted_data,
+                encrypted_data=encrypted_data,   # now equals pass_code
                 participant_name=display_name,
                 participant_email=participant_email,
                 participant_phone=participant_phone,
@@ -139,8 +133,6 @@ def generate_pass():
         db.session.add(analytics)
 
         analytics.total_passes_generated += quantity
-
-
         db.session.commit()
 
         flash(
@@ -164,11 +156,12 @@ def generate_pass():
 @login_required
 def view_passes(event_id):
     event = Event.query.get_or_404(event_id)
-        
+
     # Security check: Only organizer can view their event passes
     if event.organizer_id != current_user.id:
         flash('You do not have permission to view these passes', 'danger')
         return redirect(url_for('dashboard.dashboard'))
+
     passes = EventPass.query.filter_by(event_id=event_id).all()
     return render_template(
         'passes/view.html',
@@ -184,11 +177,12 @@ def view_passes(event_id):
 @login_required
 def download_pass(pass_id):
     pass_obj = EventPass.query.get_or_404(pass_id)
-        
+
     # Security check: Only event organizer can download passes
     if pass_obj.event.organizer_id != current_user.id:
         flash('You do not have permission to download this pass', 'danger')
         return redirect(url_for('dashboard.dashboard'))
+
     return render_template(
         'passes/download.html',
         pass_obj=pass_obj
