@@ -68,19 +68,30 @@
                                                 <span class="badge bg-secondary">Completed</span>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="d-flex gap-2">
+                                            <!-- Eye = Tickets -->
                                             <a href="{{ url_for('tickets.list_tickets', event_id=event.id) }}"
-                                               class="btn btn-sm btn-outline-primary me-1">
+                                               class="btn btn-sm btn-outline-primary" title="View Tickets">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+
+                                            <!-- NEW: Manage Gates -->
+                                            <a href="{{ url_for('gates.event_gates', event_id=event.id) }}"
+                                               class="btn btn-sm btn-outline-success" title="Manage Gates">
+                                                <i class="fas fa-door-open"></i>
+                                            </a>
+
+                                            <!-- Edit -->
                                             <a href="{{ url_for('events.edit_event', event_id=event.id) }}"
-                                               class="btn btn-sm btn-outline-warning me-1">
+                                               class="btn btn-sm btn-outline-warning" title="Edit Event">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+
+                                            <!-- Delete -->
                                             <form method="POST" action="{{ url_for('events.delete_event', event_id=event.id) }}"
                                                   style="display:inline;"
                                                   onsubmit="return confirm('Are you sure you want to delete {{ event.event_name }}?');">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Event">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
