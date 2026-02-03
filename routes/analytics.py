@@ -23,33 +23,55 @@ def index():
         events = Event.query.all()
     else:
         events = Event.query.filter_by(organizer_id=current_user.id).all()
+
     return render_template('analytics/index.html', events=events)
 
 
 @bp.route('/data/<int:event_id>')
 @login_required
 def event_data(event_id):
-    """Get analytics data for a specific event"""
-    analytics = EventAnalytics.query.filter_by(event_id=event_id).first()
+    """
+    Return analytics for event_id using REAL DB data (EventPass),
+    so it works even if EventAnalytics row is missing.
+    """
+    # Permission: organizers only see their own events (admins can see all)
+    event = Event.query.get_or_404(event_id)
+    if current_user.role != 'admin' and event.organizer_id != current_user.id:
+        return jsonify({"success": False, "message": "Not authorized"}), 403
 
-    if analytics:
-        return jsonify({
-            'success': True,
-            'data': {
-                'total_passes': analytics.total_passes_generated,
-                'validated_passes': analytics.total_passes_validated,
-                'judges': analytics.judges_count,
-                'mentors': analytics.mentors_count,
-                'participants': analytics.participants_count,
-                'volunteers': analytics.volunteers_count,
-                'guests': analytics.guests_count
-            }
-        }), 200
+    total_passes = EventPass.query.filter_by(event_id=event_id).count()
+    validated_passes = EventPass.query.filter_by(event_id=event_id, is_validated=True).count()
+
+    # Pass type breakdown (by PassType.type_name)
+    pass_type_stats = (
+        db.session.query(
+            PassType.type_name.label("type_name"),
+            db.func.count(EventPass.id).label("total")
+        )
+        .join(EventPass, EventPass.pass_type_id == PassType.id)
+        .filter(EventPass.event_id == event_id)
+        .group_by(PassType.type_name)
+        .all()
+    )
+
+    type_labels = [row.type_name for row in pass_type_stats]
+    type_counts = [int(row.total) for row in pass_type_stats]
+
+    # If there are no passes, keep chart safe
+    if not type_labels:
+        type_labels = []
+        type_counts = []
 
     return jsonify({
-        'success': False,
-        'message': 'No analytics data found for this event'
-    }), 404
+        "success": True,
+        "data": {
+            "event_id": event_id,
+            "total_passes": int(total_passes),
+            "validated_passes": int(validated_passes),
+            "pass_type_labels": type_labels,
+            "pass_type_counts": type_counts
+        }
+    }), 200
 
 
 # ---------------- CSV EXPORT ROUTES ---------------- #
@@ -59,6 +81,10 @@ def event_data(event_id):
 def export_attendees(event_id):
     """Export attendee list as CSV"""
     event = Event.query.get_or_404(event_id)
+
+    if current_user.role != 'admin' and event.organizer_id != current_user.id:
+        return make_response("Not authorized", 403)
+
     passes = EventPass.query.filter_by(event_id=event_id).all()
 
     output = io.StringIO()
@@ -84,7 +110,7 @@ def export_attendees(event_id):
     response = make_response(output.getvalue())
     response.headers['Content-Disposition'] = (
         f'attachment; filename=attendees_{event.event_name}_'
-        f'{datetime.now().strftime("%Y%m%d")}.csv'
+        f'{datetime.now().strftime("%%Y%%m%%d")}.csv'
     )
     response.headers['Content-Type'] = 'text/csv'
     return response
@@ -96,9 +122,12 @@ def export_validation_logs(event_id):
     """Export validation logs as CSV"""
     event = Event.query.get_or_404(event_id)
 
+    if current_user.role != 'admin' and event.organizer_id != current_user.id:
+        return make_response("Not authorized", 403)
+
     validation_logs = (
         db.session.query(ValidationLog)
-        .join(EventPass)
+        .join(EventPass, ValidationLog.pass_id == EventPass.id)
         .filter(EventPass.event_id == event_id)
         .order_by(ValidationLog.validation_time.desc())
         .all()
@@ -115,8 +144,8 @@ def export_validation_logs(event_id):
     for log in validation_logs:
         writer.writerow([
             log.validation_time.strftime('%Y-%m-%d %H:%M:%S'),
-            log.event_pass.pass_code if log.event_pass else 'N/A',
-            log.event_pass.participant_name if log.event_pass else 'N/A',
+            log.pass_obj.pass_code if log.pass_obj else 'N/A',
+            log.pass_obj.participant_name if log.pass_obj else 'N/A',
             log.validator.full_name if log.validator else 'N/A',
             log.validation_status.upper(),
             log.validation_message or 'N/A',
@@ -126,7 +155,7 @@ def export_validation_logs(event_id):
     response = make_response(output.getvalue())
     response.headers['Content-Disposition'] = (
         f'attachment; filename=validation_logs_{event.event_name}_'
-        f'{datetime.now().strftime("%Y%m%d")}.csv'
+        f'{datetime.now().strftime("%%Y%%m%%d")}.csv'
     )
     response.headers['Content-Type'] = 'text/csv'
     return response
@@ -137,17 +166,22 @@ def export_validation_logs(event_id):
 def export_analytics(event_id):
     """Export event analytics as CSV"""
     event = Event.query.get_or_404(event_id)
-    analytics = EventAnalytics.query.filter_by(event_id=event_id).first()
+
+    if current_user.role != 'admin' and event.organizer_id != current_user.id:
+        return make_response("Not authorized", 403)
+
+    total_passes = EventPass.query.filter_by(event_id=event_id).count()
+    validated_passes = EventPass.query.filter_by(event_id=event_id, is_validated=True).count()
 
     pass_type_stats = (
         db.session.query(
             PassType.type_name,
             db.func.count(EventPass.id).label('total'),
             db.func.sum(
-                db.case([(EventPass.is_validated == True, 1)], else_=0)
+                db.case((EventPass.is_validated == True, 1), else_=0)  # noqa: E712
             ).label('validated')
         )
-        .join(EventPass)
+        .join(EventPass, EventPass.pass_type_id == PassType.id)
         .filter(EventPass.event_id == event_id)
         .group_by(PassType.type_name)
         .all()
@@ -157,33 +191,23 @@ def export_analytics(event_id):
     writer = csv.writer(output)
 
     writer.writerow(['Metric', 'Value'])
+    writer.writerow(['Total Passes', total_passes])
+    writer.writerow(['Validated Passes', validated_passes])
 
-    if analytics:
-        writer.writerow(['Total Passes Generated', analytics.total_passes_generated])
-        writer.writerow(['Total Passes Validated', analytics.total_passes_validated])
-        rate = (
-            analytics.total_passes_validated /
-            analytics.total_passes_generated * 100
-            if analytics.total_passes_generated > 0 else 0
-        )
-        writer.writerow(['Validation Rate', f'{rate:.2f}%'])
+    rate = (validated_passes / total_passes * 100) if total_passes > 0 else 0
+    writer.writerow(['Validation Rate', f'{rate:.2f}%'])
 
     writer.writerow([])
     writer.writerow(['Pass Type', 'Total Generated', 'Validated', 'Validation Rate'])
 
     for stat in pass_type_stats:
-        rate = (stat.validated / stat.total * 100) if stat.total > 0 else 0
-        writer.writerow([
-            stat.type_name,
-            stat.total,
-            stat.validated,
-            f'{rate:.2f}%'
-        ])
+        r = (stat.validated / stat.total * 100) if stat.total > 0 else 0
+        writer.writerow([stat.type_name, stat.total, stat.validated, f'{r:.2f}%'])
 
     response = make_response(output.getvalue())
     response.headers['Content-Disposition'] = (
         f'attachment; filename=analytics_{event.event_name}_'
-        f'{datetime.now().strftime("%Y%m%d")}.csv'
+        f'{datetime.now().strftime("%%Y%%m%%d")}.csv'
     )
     response.headers['Content-Type'] = 'text/csv'
     return response
@@ -192,8 +216,11 @@ def export_analytics(event_id):
 @bp.route('/export/gate-statistics/<int:event_id>')
 @login_required
 def export_gate_statistics(event_id):
-    """Export gate statistics as CSV"""
+    """Export gate statistics as CSV (placeholder)"""
     event = Event.query.get_or_404(event_id)
+
+    if current_user.role != 'admin' and event.organizer_id != current_user.id:
+        return make_response("Not authorized", 403)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -210,7 +237,7 @@ def export_gate_statistics(event_id):
     response = make_response(output.getvalue())
     response.headers['Content-Disposition'] = (
         f'attachment; filename=gate_statistics_{event.event_name}_'
-        f'{datetime.now().strftime("%Y%m%d")}.csv'
+        f'{datetime.now().strftime("%%Y%%m%%d")}.csv'
     )
     response.headers['Content-Type'] = 'text/csv'
     return response

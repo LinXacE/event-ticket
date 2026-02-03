@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from database import db
 from models import Event, EventPass
@@ -9,7 +9,11 @@ events_bp = Blueprint('events', __name__)
 @events_bp.route('/events', methods=['GET'])
 @login_required
 def list_events():
-    """Display all events"""
+    """
+    (Optional / legacy)
+    Display all events using events/list.html.
+    Your dashboard uses /dashboard/events, so this is not the main UI.
+    """
     events = Event.query.order_by(Event.event_date.desc()).all()
     return render_template('events/list.html', events=events)
 
@@ -17,49 +21,70 @@ def list_events():
 @events_bp.route('/events/create', methods=['GET', 'POST'])
 @login_required
 def create_event():
-    """Create a new event"""
-    if request.method == 'POST':
+    """
+    Create a new event.
+
+    IMPORTANT FIX:
+    - We DO NOT render templates/events/create.html anymore.
+    - On GET: redirect to dashboard events (modal is the UI).
+    - On POST: validate, create, and redirect back to dashboard events.
+    """
+    if request.method == 'GET':
+        return redirect(url_for('dashboard.events'))
+
+    # POST
+    try:
+        name = (request.form.get('name') or '').strip()
+        description = (request.form.get('description') or '').strip()
+        date_str = (request.form.get('date') or '').strip()
+        time_str = (request.form.get('time') or '').strip()
+        location = (request.form.get('location') or '').strip()
+        max_participants = (request.form.get('max_participants') or '').strip()
+
+        # Validate required fields
+        if not all([name, date_str, time_str, location, max_participants]):
+            flash('Please fill in all required fields', 'danger')
+            return redirect(url_for('dashboard.events'))
+
+        # Parse date and time
+        event_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+        # Handle HH:MM and HH:MM:SS (just in case)
         try:
-            # Get form data
-            name = request.form.get('name')
-            description = request.form.get('description')
-            date_str = request.form.get('date')
-            time_str = request.form.get('time')
-            location = request.form.get('location')
-            max_participants = request.form.get('max_participants')
-
-            # Validate required fields
-            if not all([name, date_str, time_str, location, max_participants]):
-                flash('Please fill in all required fields', 'error')
-                return render_template('events/create.html')
-
-            # Parse date and time
-            event_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            event_time = datetime.strptime(time_str, '%H:%M:%S').time()
+        except ValueError:
             event_time = datetime.strptime(time_str, '%H:%M').time()
 
-            # Create event
-            event = Event(
-                event_name=name,
-                event_description=description,
-                event_date=event_date,
-                event_time=event_time,
-                location=location,
-                total_capacity=int(max_participants),
-                organizer_id=current_user.id
-            )
+        # Validate max participants is a positive int
+        try:
+            capacity = int(max_participants)
+            if capacity < 1:
+                raise ValueError()
+        except ValueError:
+            flash('Maximum participants must be a number (>= 1)', 'danger')
+            return redirect(url_for('dashboard.events'))
 
-            db.session.add(event)
-            db.session.commit()
+        # Create event
+        event = Event(
+            event_name=name,
+            event_description=description,
+            event_date=event_date,
+            event_time=event_time,
+            location=location,
+            total_capacity=capacity,
+            organizer_id=current_user.id
+        )
 
-            flash('Event created successfully!', 'success')
-            return redirect(url_for('events.list_events'))
+        db.session.add(event)
+        db.session.commit()
 
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error creating event: {str(e)}', 'error')
-            return render_template('events/create.html')
+        flash('Event created successfully!', 'success')
+        return redirect(url_for('dashboard.events'))
 
-    return render_template('events/create.html')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating event: {str(e)}', 'danger')
+        return redirect(url_for('dashboard.events'))
 
 
 @events_bp.route('/events/<int:event_id>', methods=['GET'])
@@ -101,7 +126,7 @@ def edit_event(event_id):
 
     # Permission check
     if event.organizer_id != current_user.id and current_user.role != 'admin':
-        flash('You do not have permission to edit this event', 'error')
+        flash('You do not have permission to edit this event', 'danger')
         return redirect(url_for('events.event_details', event_id=event_id))
 
     if request.method == 'POST':
@@ -116,17 +141,10 @@ def edit_event(event_id):
 
             time_str = request.form.get('time')
 
-            # Handle HH:MM and HH:MM:SS
             try:
-                event.event_time = datetime.strptime(
-                    time_str,
-                    '%H:%M:%S'
-                ).time()
+                event.event_time = datetime.strptime(time_str, '%H:%M:%S').time()
             except ValueError:
-                event.event_time = datetime.strptime(
-                    time_str,
-                    '%H:%M'
-                ).time()
+                event.event_time = datetime.strptime(time_str, '%H:%M').time()
 
             event.location = request.form.get('location')
 
@@ -135,13 +153,11 @@ def edit_event(event_id):
 
             db.session.commit()
             flash('Event updated successfully!', 'success')
-            return redirect(
-                url_for('events.event_details', event_id=event_id)
-            )
+            return redirect(url_for('events.event_details', event_id=event_id))
 
         except Exception as e:
             db.session.rollback()
-            flash(f'Error updating event: {str(e)}', 'error')
+            flash(f'Error updating event: {str(e)}', 'danger')
 
     return render_template('events/edit.html', event=event)
 
@@ -155,26 +171,19 @@ def delete_event(event_id):
 
         pass_count = EventPass.query.filter_by(event_id=event_id).count()
         if pass_count > 0:
-            flash(
-                f'Cannot delete event with {pass_count} existing passes.',
-                'error'
-            )
-            return redirect(
-                url_for('events.event_details', event_id=event_id)
-            )
+            flash(f'Cannot delete event with {pass_count} existing passes.', 'danger')
+            return redirect(url_for('dashboard.events'))
 
         db.session.delete(event)
         db.session.commit()
 
         flash('Event deleted successfully!', 'success')
-        return redirect(url_for('events.list_events'))
+        return redirect(url_for('dashboard.events'))
 
     except Exception as e:
         db.session.rollback()
-        flash(f'Error deleting event: {str(e)}', 'error')
-        return redirect(
-            url_for('events.event_details', event_id=event_id)
-        )
+        flash(f'Error deleting event: {str(e)}', 'danger')
+        return redirect(url_for('dashboard.events'))
 
 
 @events_bp.route('/events/<int:event_id>/passes', methods=['GET'])
@@ -189,11 +198,7 @@ def event_passes(event_id):
         .all()
     )
 
-    return render_template(
-        'events/passes.html',
-        event=event,
-        passes=passes
-    )
+    return render_template('events/passes.html', event=event, passes=passes)
 
 
 @events_bp.route('/events/upcoming', methods=['GET'])

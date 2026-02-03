@@ -76,7 +76,7 @@
             </h4>
             <div class="row g-3">
                 <div class="col-md-3">
-                    <a href="{{ url_for('passes.generate_pass') }}" class="btn btn-lg w-100 text-white py-3" 
+                    <a href="{{ url_for('passes.generate_pass') }}" class="btn btn-lg w-100 text-white py-3"
                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
                         <i class="fas fa-qrcode fa-2x mb-2 d-block"></i>
                         Generate Pass
@@ -146,7 +146,8 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{{ url_for('dashboard.event_details', event_id=event.id) }}" 
+                                            <!-- ✅ FIX: Open same Tickets page as the eye button in /dashboard/events -->
+                                            <a href="{{ url_for('tickets.list_tickets', event_id=event.id) }}"
                                                class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
@@ -212,70 +213,70 @@
         box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         transition: all 0.3s ease;
     }
-    
+
     .card {
         border-radius: 15px;
     }
-    
+
     .table tbody tr:hover {
         background-color: #f8f9fa;
     }
 </style>
 
-    <!-- New Features Section -->
-    <div class="row g-4 mb-4">
-        <!-- Gate Management -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="mb-3">
-                        <i class="fas fa-door-open fa-3x text-primary"></i>
-                    </div>
-                    <h5 class="card-title">Gate Management</h5>
-                    <p class="card-text">Configure multi-gate access control for your events</p>
-                    <a href="{{ url_for('gates.event_gates', event_id=1) }}" class="btn btn-primary">Manage Gates</a>
+<!-- New Features Section -->
+<div class="row g-4 mb-4">
+    <!-- Gate Management -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-door-open fa-3x text-primary"></i>
                 </div>
-            </div>
-        </div>
-
-        <!-- Offline Validation -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="mb-3">
-                        <i class="fas fa-download fa-3x text-success"></i>
-                    </div>
-                    <h5 class="card-title">Offline Mode</h5>
-                    <p class="card-text">Download database for offline validation</p>
-                    <button class="btn btn-success" onclick="downloadOfflineDatabase()">Download Database</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Real-time Alerts -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="mb-3">
-                        <i class="fas fa-bell fa-3x text-warning"></i>
-                    </div>
-                    <h5 class="card-title">Security Alerts</h5>
-                    <p class="card-text">View and manage real-time security alerts</p>
-                    <button class="btn btn-warning" onclick="viewAlerts()">View Alerts</button>
-                </div>
+                <h5 class="card-title">Gate Management</h5>
+                <p class="card-text">Configure multi-gate access control for your events</p>
+                <a href="{{ url_for('gates.event_gates', event_id=1) }}" class="btn btn-primary">Manage Gates</a>
             </div>
         </div>
     </div>
 
-    <!-- Real-time Alerts Panel -->
-    <div id="alertsPanel" class="card border-0 shadow-sm mb-4" style="display: none;">
-        <div class="card-header bg-danger text-white">
-            <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Security Alerts</h5>
-        </div>
-        <div class="card-body">
-            <div id="alertsList"></div>
+    <!-- Offline Validation -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-download fa-3x text-success"></i>
+                </div>
+                <h5 class="card-title">Offline Mode</h5>
+                <p class="card-text">Download database for offline validation</p>
+                <button class="btn btn-success" onclick="downloadOfflineDatabase()">Download Database</button>
+            </div>
         </div>
     </div>
+
+    <!-- Real-time Alerts -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-bell fa-3x text-warning"></i>
+                </div>
+                <h5 class="card-title">Security Alerts</h5>
+                <p class="card-text">View and manage real-time security alerts</p>
+                <button class="btn btn-warning" onclick="viewAlerts()">View Alerts</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Alerts Panel -->
+<div id="alertsPanel" class="card border-0 shadow-sm mb-4" style="display: none;">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Security Alerts</h5>
+    </div>
+    <div class="card-body">
+        <div id="alertsList"></div>
+    </div>
+</div>
 
 <script>
 // Offline validation

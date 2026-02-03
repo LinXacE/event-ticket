@@ -31,9 +31,9 @@
         </div>
     </div>
 
-    <!-- Analytics Content (Hidden until event is selected) -->
+    <!-- Analytics Content -->
     <div id="analyticsContent" style="display: none;">
-        
+
         <!-- Statistics Cards -->
         <div class="row mb-4">
             <div class="col-md-3">
@@ -132,32 +132,27 @@
                 <div class="row">
                     <div class="col-md-3 mb-3">
                         <button class="btn btn-outline-success w-100" onclick="exportAttendees()">
-                            <i class="fas fa-users me-2"></i>
-                            Attendee List
+                            <i class="fas fa-users me-2"></i> Attendee List
                         </button>
                     </div>
                     <div class="col-md-3 mb-3">
                         <button class="btn btn-outline-success w-100" onclick="exportValidationLogs()">
-                            <i class="fas fa-clipboard-list me-2"></i>
-                            Validation Logs
+                            <i class="fas fa-clipboard-list me-2"></i> Validation Logs
                         </button>
                     </div>
                     <div class="col-md-3 mb-3">
                         <button class="btn btn-outline-success w-100" onclick="exportAnalytics()">
-                            <i class="fas fa-chart-line me-2"></i>
-                            Analytics Summary
+                            <i class="fas fa-chart-line me-2"></i> Analytics Summary
                         </button>
                     </div>
                     <div class="col-md-3 mb-3">
                         <button class="btn btn-outline-success w-100" onclick="exportGateStats()">
-                            <i class="fas fa-door-open me-2"></i>
-                            Gate Statistics
+                            <i class="fas fa-door-open me-2"></i> Gate Statistics
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 
     <!-- Empty State -->
@@ -166,22 +161,13 @@
         <h4 class="text-muted">Select an event to view analytics</h4>
         <p class="text-muted">Choose an event from the dropdown above to see detailed statistics and reports</p>
     </div>
-
 </div>
 
 <style>
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    .bg-gradient-success {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    }
-    .bg-gradient-warning {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    }
-    .bg-gradient-info {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    }
+    .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-gradient-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .bg-gradient-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .bg-gradient-info { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -193,24 +179,31 @@ let passTypesChart = null;
 function loadEventAnalytics() {
     const select = document.getElementById('eventSelect');
     currentEventId = select.value;
-    
+
     if (!currentEventId) {
         document.getElementById('analyticsContent').style.display = 'none';
         document.getElementById('emptyState').style.display = 'block';
         return;
     }
-    
+
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('analyticsContent').style.display = 'block';
-    
-    // Fetch analytics data
+
     fetch(`/analytics/data/${currentEventId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateStatistics(data.data);
-                updateCharts(data.data);
+        .then(async (response) => {
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`HTTP ${response.status}: ${text}`);
             }
+            return response.json();
+        })
+        .then(payload => {
+            if (!payload.success) {
+                alert(payload.message || 'No analytics data found');
+                return;
+            }
+            updateStatistics(payload.data);
+            updateCharts(payload.data);
         })
         .catch(error => {
             console.error('Error loading analytics:', error);
@@ -219,21 +212,24 @@ function loadEventAnalytics() {
 }
 
 function updateStatistics(data) {
-    document.getElementById('totalPasses').textContent = data.total_passes || 0;
-    document.getElementById('validatedPasses').textContent = data.validated_passes || 0;
-    document.getElementById('pendingPasses').textContent = (data.total_passes - data.validated_passes) || 0;
-    
-    const rate = data.total_passes > 0 
-        ? ((data.validated_passes / data.total_passes) * 100).toFixed(1)
-        : 0;
+    const total = data.total_passes || 0;
+    const validated = data.validated_passes || 0;
+    const pending = total - validated;
+
+    document.getElementById('totalPasses').textContent = total;
+    document.getElementById('validatedPasses').textContent = validated;
+    document.getElementById('pendingPasses').textContent = pending;
+
+    const rate = total > 0 ? ((validated / total) * 100).toFixed(1) : 0;
     document.getElementById('validationRate').textContent = rate + '%';
 }
 
 function updateCharts(data) {
+    const total = data.total_passes || 0;
     const validated = data.validated_passes || 0;
-    const pending = (data.total_passes - data.validated_passes) || 0;
-    
-    // Validation Chart
+    const pending = total - validated;
+
+    // Doughnut chart
     const validationCtx = document.getElementById('validationChart').getContext('2d');
     if (validationChart) validationChart.destroy();
     validationChart = new Chart(validationCtx, {
@@ -249,29 +245,23 @@ function updateCharts(data) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
+            plugins: { legend: { position: 'bottom' } }
         }
     });
-    
-    // Pass Types Chart (using available data)
+
+    // Pass types bar chart (dynamic labels from backend)
+    const labels = data.pass_type_labels || [];
+    const counts = data.pass_type_counts || [];
+
     const passTypesCtx = document.getElementById('passTypesChart').getContext('2d');
     if (passTypesChart) passTypesChart.destroy();
     passTypesChart = new Chart(passTypesCtx, {
         type: 'bar',
         data: {
-            labels: ['VIP', 'General', 'Staff', 'Participant'],
+            labels: labels,
             datasets: [{
                 label: 'Passes Generated',
-                data: [
-                    data.judges || 0,
-                    data.participants || 0,
-                    data.volunteers || 0,
-                    data.guests || 0
-                ],
+                data: counts,
                 backgroundColor: '#667eea',
                 borderWidth: 0
             }]
@@ -280,51 +270,27 @@ function updateCharts(data) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
             },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 }
 
 function exportAttendees() {
-    if (!currentEventId) {
-        alert('Please select an event first');
-        return;
-    }
+    if (!currentEventId) return alert('Please select an event first');
     window.location.href = `/analytics/export/attendees/${currentEventId}`;
 }
-
 function exportValidationLogs() {
-    if (!currentEventId) {
-        alert('Please select an event first');
-        return;
-    }
+    if (!currentEventId) return alert('Please select an event first');
     window.location.href = `/analytics/export/validation-logs/${currentEventId}`;
 }
-
 function exportAnalytics() {
-    if (!currentEventId) {
-        alert('Please select an event first');
-        return;
-    }
+    if (!currentEventId) return alert('Please select an event first');
     window.location.href = `/analytics/export/analytics/${currentEventId}`;
 }
-
 function exportGateStats() {
-    if (!currentEventId) {
-        alert('Please select an event first');
-        return;
-    }
+    if (!currentEventId) return alert('Please select an event first');
     window.location.href = `/analytics/export/gate-statistics/${currentEventId}`;
 }
 </script>
