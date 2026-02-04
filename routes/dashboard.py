@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import Event, EventPass, EventAnalytics, PassType, ValidationLog
+from models import Event, EventPass, PassType, ValidationLog
 from database import db
 from sqlalchemy import func
 from flask_bcrypt import Bcrypt
@@ -8,20 +8,23 @@ from flask_bcrypt import Bcrypt
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 bcrypt = Bcrypt()
 
+DELETE_PREFIX = "[DELETED_AT="
+
+def is_recycled(event: Event) -> bool:
+    return event.status == "cancelled" and (event.event_description or "").startswith(DELETE_PREFIX)
+
 
 @bp.route('/')
 @login_required
 def home():
     if current_user.role == 'admin':
-        events = Event.query.order_by(Event.created_at.desc()).limit(5).all()
-        total_events = Event.query.count()
+        all_events = Event.query.order_by(Event.created_at.desc()).all()
+        events = [e for e in all_events if not is_recycled(e)][:5]
+        total_events = len([e for e in all_events if not is_recycled(e)])
     else:
-        events = Event.query.filter_by(
-            organizer_id=current_user.id
-        ).order_by(Event.created_at.desc()).limit(5).all()
-        total_events = Event.query.filter_by(
-            organizer_id=current_user.id
-        ).count()
+        all_events = Event.query.filter_by(organizer_id=current_user.id).order_by(Event.created_at.desc()).all()
+        events = [e for e in all_events if not is_recycled(e)][:5]
+        total_events = len([e for e in all_events if not is_recycled(e)])
 
     total_passes = EventPass.query.count()
     validated_passes = EventPass.query.filter_by(is_validated=True).count()
@@ -39,9 +42,7 @@ def home():
         'total_events': total_events,
         'total_passes': total_passes,
         'validated_passes': validated_passes,
-        'validation_rate': round(
-            (validated_passes / total_passes * 100) if total_passes > 0 else 0, 1
-        )
+        'validation_rate': round((validated_passes / total_passes * 100) if total_passes > 0 else 0, 1)
     }
 
     return render_template(
@@ -83,11 +84,12 @@ def settings():
 @login_required
 def events():
     if current_user.role == 'admin':
-        events = Event.query.order_by(Event.created_at.desc()).all()
+        all_events = Event.query.order_by(Event.created_at.desc()).all()
     else:
-        events = Event.query.filter_by(
-            organizer_id=current_user.id
-        ).order_by(Event.created_at.desc()).all()
+        all_events = Event.query.filter_by(organizer_id=current_user.id).order_by(Event.created_at.desc()).all()
+
+    # ✅ Hide recycled events from main list
+    events = [e for e in all_events if not is_recycled(e)]
 
     return render_template('dashboard/events.html', events=events)
 
@@ -102,11 +104,7 @@ def event_details(event_id):
         return redirect(url_for('dashboard.home'))
 
     passes = EventPass.query.filter_by(event_id=event_id).all()
-    return render_template(
-        'dashboard/event_details.html',
-        event=event,
-        passes=passes
-    )
+    return render_template('dashboard/event_details.html', event=event, passes=passes)
 
 
 @bp.route('/analytics')
@@ -116,12 +114,8 @@ def analytics():
         total_events = Event.query.count()
         total_passes = EventPass.query.count()
     else:
-        total_events = Event.query.filter_by(
-            organizer_id=current_user.id
-        ).count()
-        total_passes = EventPass.query.join(Event).filter(
-            Event.organizer_id == current_user.id
-        ).count()
+        total_events = Event.query.filter_by(organizer_id=current_user.id).count()
+        total_passes = EventPass.query.join(Event).filter(Event.organizer_id == current_user.id).count()
 
     validated_passes = EventPass.query.filter_by(is_validated=True).count()
 

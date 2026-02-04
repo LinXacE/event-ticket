@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Recycle Bin - SmartEvents{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-1"><i class="fas fa-trash-restore me-2"></i>Recycle Bin</h2>
+                <p class="text-muted mb-0">Deleted events stay here for 30 days, then you can purge permanently.</p>
+            </div>
+            <a href="{{ url_for('dashboard.events') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Events
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            {% if rows and rows|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Deleted At</th>
+                            <th>Days Left</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>
+                            <td><strong>{{ row.event.event_name }}</strong></td>
+                            <td>{{ row.deleted_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>
+                                {% if row.days_left >= 0 %}
+                                    <span class="badge bg-success">{{ row.days_left }} days</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Expired</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-flex gap-2">
+                                <form method="POST" action="{{ url_for('events.restore_event', event_id=row.event.id) }}">
+                                    <button class="btn btn-sm btn-outline-primary" {% if row.days_left < 0 %}disabled{% endif %}>
+                                        <i class="fas fa-undo me-1"></i>Restore
+                                    </button>
+                                </form>
+
+                                <form method="POST" action="{{ url_for('events.purge_event', event_id=row.event.id) }}"
+                                      onsubmit="return confirm('Permanently delete this event and ALL its passes?');">
+                                    <button class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i>Purge
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h5>No deleted events</h5>
+                <p class="text-muted mb-0">Your recycle bin is empty.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
