@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from database import db
 from models import Event, EventPass
 from datetime import datetime, timedelta
+from typing import Optional
 
 events_bp = Blueprint('events', __name__)
 
@@ -11,21 +12,20 @@ events_bp = Blueprint('events', __name__)
 # -----------------------------------------
 DELETE_PREFIX = "[DELETED_AT="
 
-def mark_deleted_description(desc: str | None, deleted_at: datetime) -> str:
+def mark_deleted_description(desc: Optional[str], deleted_at: datetime) -> str:
     desc = desc or ""
-    # Remove old marker if exists
     desc = remove_deleted_marker(desc)
     return f"{DELETE_PREFIX}{deleted_at.isoformat()}]\n{desc}".strip()
 
-def remove_deleted_marker(desc: str | None) -> str:
+def remove_deleted_marker(desc: Optional[str]) -> str:
     desc = desc or ""
     if desc.startswith(DELETE_PREFIX):
         end = desc.find("]\n")
         if end != -1:
-            return desc[end+2:].lstrip()
+            return desc[end + 2:].lstrip()
         end2 = desc.find("]")
         if end2 != -1:
-            return desc[end2+1:].lstrip()
+            return desc[end2 + 1:].lstrip()
     return desc
 
 def get_deleted_at(event: Event):
@@ -41,7 +41,6 @@ def get_deleted_at(event: Event):
     return None
 
 def is_in_recycle_bin(event: Event) -> bool:
-    # We treat "cancelled + has DELETED_AT marker" as recycled
     return event.status == "cancelled" and (event.event_description or "").startswith(DELETE_PREFIX)
 
 
@@ -55,6 +54,7 @@ def list_events():
 @events_bp.route('/events/create', methods=['GET', 'POST'])
 @login_required
 def create_event():
+    # Your UI creates events from dashboard modal, so redirect GET
     if request.method == 'GET':
         return redirect(url_for('dashboard.events'))
 
@@ -174,21 +174,18 @@ def edit_event(event_id):
 @login_required
 def delete_event(event_id):
     """
-    Option A:
     - If event has passes -> move to Recycle Bin (soft delete)
     - If event has NO passes -> delete permanently
     """
     try:
         event = Event.query.get_or_404(event_id)
 
-        # Permission
         if event.organizer_id != current_user.id and current_user.role != 'admin':
             flash('You do not have permission to delete this event', 'danger')
             return redirect(url_for('dashboard.events'))
 
         pass_count = EventPass.query.filter_by(event_id=event_id).count()
 
-        # If passes exist -> recycle bin (soft delete)
         if pass_count > 0:
             now = datetime.utcnow()
             event.status = "cancelled"
@@ -198,7 +195,6 @@ def delete_event(event_id):
             flash(f'Event moved to Recycle Bin (has {pass_count} passes). You can restore within 30 days.', 'warning')
             return redirect(url_for('dashboard.events'))
 
-        # If no passes -> hard delete immediately
         db.session.delete(event)
         db.session.commit()
 
@@ -211,21 +207,19 @@ def delete_event(event_id):
         return redirect(url_for('dashboard.events'))
 
 
-# -----------------------------------------
-# ✅ Recycle Bin UI
-# -----------------------------------------
 @events_bp.route('/events/recycle-bin', methods=['GET'])
 @login_required
 def recycle_bin():
-    # Admin sees all recycled, organizer sees only theirs
     q = Event.query
     if current_user.role != 'admin':
         q = q.filter(Event.organizer_id == current_user.id)
 
-    recycled = [e for e in q.order_by(Event.updated_at.desc()).all() if is_in_recycle_bin(e)]
+    all_events = q.order_by(Event.updated_at.desc()).all()
+    recycled = [e for e in all_events if is_in_recycle_bin(e)]
 
     rows = []
     now = datetime.utcnow()
+
     for e in recycled:
         deleted_at = get_deleted_at(e) or e.updated_at
         days_left = 30 - (now - deleted_at).days
@@ -273,7 +267,6 @@ def restore_event(event_id):
 @events_bp.route('/events/<int:event_id>/purge', methods=['POST'])
 @login_required
 def purge_event(event_id):
-    """Permanently delete an event from Recycle Bin (deletes passes too via cascade)."""
     try:
         event = Event.query.get_or_404(event_id)
 

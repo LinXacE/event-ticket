@@ -12,17 +12,116 @@
     </div>
 
     <div class="row g-4">
+
+        <!-- Appearance -->
         <div class="col-md-6 col-lg-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-trash-restore me-2"></i>Recycle Bin</h5>
-                    <p class="text-muted">Restore deleted events within 30 days or permanently purge them.</p>
+                    <h5 class="card-title">
+                        <i class="fas fa-adjust me-2"></i>System Appearance
+                    </h5>
+                    <p class="text-muted">
+                        Switch between Light and Dark mode (saved for all pages).
+                    </p>
+
+                    <div class="d-flex align-items-center justify-content-between mt-3">
+                        <div>
+                            <span class="fw-semibold">Theme</span>
+                            <div class="text-muted small">Light / Dark</div>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="themeToggle">
+                            <label class="form-check-label" for="themeToggle" id="themeLabel">Light</label>
+                        </div>
+                    </div>
+
+                    <small class="text-muted d-block mt-3">
+                        Tip: Dark mode helps for long sessions / night work.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-user me-2"></i>Profile
+                    </h5>
+                    <p class="text-muted">
+                        Update your name, email, phone, and password.
+                    </p>
+                    <a href="{{ url_for('dashboard.profile') }}" class="btn btn-primary">
+                        Open Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recycle Bin -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-trash-restore me-2"></i>Recycle Bin
+                    </h5>
+                    <p class="text-muted">
+                        Restore deleted events within 30 days or permanently purge them.
+                    </p>
                     <a href="{{ url_for('events.recycle_bin') }}" class="btn btn-primary">
                         Open Recycle Bin
                     </a>
                 </div>
             </div>
         </div>
+
+        <!-- Logout -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                    </h5>
+                    <p class="text-muted">
+                        Sign out of the dashboard.
+                    </p>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
+
+<script>
+(function () {
+    // Use localStorage for site-wide theme persistence
+    const toggle = document.getElementById('themeToggle');
+    const label = document.getElementById('themeLabel');
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+
+        const isDark = theme === 'dark';
+        if (toggle) toggle.checked = isDark;
+        if (label) label.textContent = isDark ? 'Dark' : 'Light';
+    }
+
+    // Load saved theme
+    const saved = localStorage.getItem('theme') || 'light';
+    applyTheme(saved);
+
+    // Toggle handler
+    if (toggle) {
+        toggle.addEventListener('change', function () {
+            applyTheme(toggle.checked ? 'dark' : 'light');
+        });
+    }
+})();
+</script>
 {% endblock %}
