@@ -38,16 +38,16 @@
 
                             <!-- Camera View -->
                             <div id="scanner-container" class="mb-3" style="background: #000; border-radius: 10px; overflow: hidden;">
-                                <video id="scanner-video" width="100%" height="300" style="display: block;"></video>
+                                <video id="scanner-video" playsinline muted width="100%" height="300" style="display: block;"></video>
                                 <canvas id="scanner-canvas" style="display: none;"></canvas>
                             </div>
 
                             <!-- Scanner Controls -->
                             <div class="d-grid gap-2">
-                                <button id="start-scanner" class="btn btn-success btn-lg">
+                                <button id="start-scanner" class="btn btn-success btn-lg" type="button">
                                     <i class="fas fa-play me-2"></i>Start Scanner
                                 </button>
-                                <button id="stop-scanner" class="btn btn-danger btn-lg" style="display: none;">
+                                <button id="stop-scanner" class="btn btn-danger btn-lg" type="button" style="display: none;">
                                     <i class="fas fa-stop me-2"></i>Stop Scanner
                                 </button>
                             </div>
@@ -60,7 +60,8 @@
                             </div>
 
                             <div class="mt-3 text-muted small text-start">
-                                <strong>Note:</strong> Your current camera scanning loop is a placeholder. Manual entry works now, and you can later plug in a real scanner library (jsQR / QuaggaJS).
+                                <strong>Note:</strong> Your current camera scanning loop is a placeholder. Manual entry works now,
+                                and you can later plug in a real scanner library (jsQR / QuaggaJS).
                             </div>
                         </div>
                     </div>
@@ -106,9 +107,7 @@
                             <div class="card-header py-3" id="result-header">
                                 <h5 class="mb-0" id="result-title"></h5>
                             </div>
-                            <div class="card-body" id="result-body">
-                                <!-- Result content will be dynamically inserted -->
-                            </div>
+                            <div class="card-body" id="result-body"></div>
                         </div>
                     </div>
                 </div>
@@ -142,34 +141,64 @@
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
 <style>
-    .card {
-        border-radius: 15px;
-    }
-
-    #scanner-video {
-        max-width: 100%;
-        height: auto;
-    }
-
-    .validation-success {
-        background-color: #d4edda;
-        border-color: #c3e6cb;
-    }
-
-    .validation-error {
-        background-color: #f8d7da;
-        border-color: #f5c6cb;
-    }
+    .card { border-radius: 15px; }
+    #scanner-video { max-width: 100%; height: auto; }
+    .validation-success { background-color: #d4edda; border-color: #c3e6cb; }
+    .validation-error { background-color: #f8d7da; border-color: #f5c6cb; }
 </style>
 
 <script>
 let videoStream = null;
 let scanningInterval = null;
+
+function setScannerStatus(html) {
+    document.getElementById('scanner-status').innerHTML = html;
+}
+
+/**
+ * Many browsers block webcam on HTTP unless it's localhost.
+ * Your URL is http://192.168.x.x:5000 -> not secure -> camera blocked.
+ */
+function canUseCameraHere() {
+    const isLocalhost =
+        location.hostname === 'localhost' ||
+        location.hostname === '127.0.0.1' ||
+        location.hostname === '::1';
+
+    // Must be secure context OR localhost
+    if (!window.isSecureContext && !isLocalhost) {
+        setScannerStatus(`
+            <p class="text-danger mb-0">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                Camera is blocked because this site is running on <b>HTTP</b> (${location.hostname}).
+                <br>
+                Use <b>https://</b> or run on <b>http://localhost</b> to enable camera access.
+            </p>
+        `);
+        return false;
+    }
+
+    // Must have mediaDevices.getUserMedia available
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        setScannerStatus(`
+            <p class="text-danger mb-0">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                Camera API not available (<code>navigator.mediaDevices.getUserMedia</code>).
+                <br>
+                Try Chrome/Edge + HTTPS or localhost.
+            </p>
+        `);
+        return false;
+    }
+
+    return true;
+}
 
 async function loadGates() {
     try {
@@ -180,7 +209,6 @@ async function loadGates() {
         const manualSel = document.getElementById('gate-select-manual');
 
         const baseOption = '<option value="">-- Select Gate --</option>';
-
         cameraSel.innerHTML = baseOption;
         manualSel.innerHTML = baseOption;
 
@@ -204,24 +232,36 @@ async function loadGates() {
         }
     } catch (e) {
         console.error('Failed to load gates', e);
+        setScannerStatus(`
+            <p class="text-danger mb-0">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                Failed to load gates. Check <code>/gates/api/active</code>.
+            </p>
+        `);
     }
 }
 
-document.addEventListener('DOMContentLoaded', loadGates);
+document.addEventListener('DOMContentLoaded', () => {
+    loadGates();
+    // show warning early (no crash)
+    canUseCameraHere();
+});
 
 // Start scanner
 document.getElementById('start-scanner').addEventListener('click', async () => {
     try {
         const gateId = document.getElementById('gate-select-camera').value;
         if (!gateId) {
-            document.getElementById('scanner-status').innerHTML =
-                '<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Please select a gate first.</p>';
+            setScannerStatus('<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Please select a gate first.</p>');
             return;
         }
 
+        // prevent crash on HTTP / missing API
+        if (!canUseCameraHere()) return;
+
         const video = document.getElementById('scanner-video');
 
-        // Request camera permission from user
+        // Optional confirm
         const permissionGranted = confirm(
             '📷 Camera Access Required\n\n' +
             'This QR scanner needs access to your camera to scan event passes. ' +
@@ -230,24 +270,22 @@ document.getElementById('start-scanner').addEventListener('click', async () => {
         );
 
         if (!permissionGranted) {
-            document.getElementById('scanner-status').innerHTML =
-                '<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Camera access was cancelled. Please enable camera to scan passes.</p>';
+            setScannerStatus('<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Camera access was cancelled.</p>');
             return;
         }
 
         videoStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' }
+            video: { facingMode: 'environment' },
+            audio: false
         });
 
         video.srcObject = videoStream;
-        video.play();
+        await video.play();
 
         document.getElementById('start-scanner').style.display = 'none';
         document.getElementById('stop-scanner').style.display = 'block';
-        document.getElementById('scanner-status').innerHTML =
-            '<p class="text-success mb-0"><i class="fas fa-check-circle me-2"></i>Scanner active - Point camera at QR/Barcode</p>';
+        setScannerStatus('<p class="text-success mb-0"><i class="fas fa-check-circle me-2"></i>Scanner active - Point camera at QR/Barcode</p>');
 
-        // Start scanning loop (placeholder)
         startScanning();
     } catch (error) {
         console.error('Camera error:', error);
@@ -262,18 +300,15 @@ document.getElementById('start-scanner').addEventListener('click', async () => {
         } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
             errorMessage += 'Camera does not support rear-facing mode.';
         } else {
-            errorMessage += error.message || 'Unknown error occurred';
+            errorMessage += (error.message || 'Unknown error occurred');
         }
 
-        document.getElementById('scanner-status').innerHTML =
-            `<p class="text-danger mb-0"><i class="fas fa-exclamation-circle me-2"></i>${errorMessage}</p>`;
+        setScannerStatus(`<p class="text-danger mb-0"><i class="fas fa-exclamation-circle me-2"></i>${errorMessage}</p>`);
     }
 });
 
 // Stop scanner
-document.getElementById('stop-scanner').addEventListener('click', () => {
-    stopScanner();
-});
+document.getElementById('stop-scanner').addEventListener('click', () => stopScanner());
 
 function stopScanner() {
     if (videoStream) {
@@ -286,16 +321,15 @@ function stopScanner() {
     }
     document.getElementById('start-scanner').style.display = 'block';
     document.getElementById('stop-scanner').style.display = 'none';
-    document.getElementById('scanner-status').innerHTML =
-        '<p class="text-muted mb-0"><i class="fas fa-info-circle me-2"></i>Scanner stopped</p>';
+    setScannerStatus('<p class="text-muted mb-0"><i class="fas fa-info-circle me-2"></i>Scanner stopped</p>');
 }
 
 function startScanning() {
     // Placeholder:
-    // Plug in jsQR / QuaggaJS later, and call validatePassFromCamera(scannedText)
+    // Plug in jsQR / QuaggaJS later, and call validatePass(scannedText, 'camera')
     scanningInterval = setInterval(() => {
         // scanning logic would go here
-    }, 100);
+    }, 150);
 }
 
 // Manual validation form
@@ -326,13 +360,9 @@ async function validatePass(code, source) {
         const result = await response.json();
         displayValidationResult(result, response.ok);
 
-        if (response.ok) {
-            addToHistory(result.pass_info);
-        }
+        if (response.ok) addToHistory(result.pass_info);
     } catch (error) {
-        displayValidationResult({
-            message: 'Connection error: ' + error.message
-        }, false);
+        displayValidationResult({ message: 'Connection error: ' + error.message }, false);
     }
 }
 
@@ -360,16 +390,12 @@ function displayValidationResult(result, success) {
         resultBody.innerHTML = `<p class="mb-0 text-danger">${result.message ?? 'Validation failed'}</p>`;
     }
 
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        resultDiv.style.display = 'none';
-    }, 5000);
+    setTimeout(() => { resultDiv.style.display = 'none'; }, 5000);
 }
 
 function addToHistory(passInfo) {
     const tbody = document.querySelector('#validation-history tbody');
 
-    // Remove "no validations" message if present
     if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
         tbody.innerHTML = '';
     }
@@ -386,10 +412,7 @@ function addToHistory(passInfo) {
         <td><span class="badge bg-success">Validated</span></td>
     `;
 
-    // Keep only last 10 validations
-    while (tbody.children.length > 10) {
-        tbody.removeChild(tbody.lastChild);
-    }
+    while (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
 }
 </script>
 {% endblock %}
