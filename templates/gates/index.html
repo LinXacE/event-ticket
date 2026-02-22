@@ -109,12 +109,13 @@
                                         <label class="form-label">Gate Type</label>
                                         <select class="form-select" name="gate_type">
                                             {% set gt = gate.gate_type or 'General' %}
-                                            <option value="General" {% if gt == 'General' %}selected{% endif %}>General</option>
-                                            <option value="VIP" {% if gt == 'VIP' %}selected{% endif %}>VIP</option>
-                                            <option value="Staff" {% if gt == 'Staff' %}selected{% endif %}>Staff</option>
-                                            <option value="Backstage" {% if gt == 'Backstage' %}selected{% endif %}>Backstage</option>
-                                            <option value="Entrance" {% if gt == 'Entrance' %}selected{% endif %}>Entrance</option>
-                                            <option value="Exit" {% if gt == 'Exit' %}selected{% endif %}>Exit</option>
+                                            {% set gt_options = gate_type_options %}
+                                            {% if gt not in gt_options %}
+                                                {% set gt_options = gt_options + [gt] %}
+                                            {% endif %}
+                                            {% for option in gt_options %}
+                                                <option value="{{ option }}" {% if gt == option %}selected{% endif %}>{{ option }}</option>
+                                            {% endfor %}
                                         </select>
                                     </div>
 
@@ -145,6 +146,8 @@
                                                         {{ pt.type_name }}
                                                     </label>
                                                 </div>
+                                            {% else %}
+                                                <small class="text-muted">No pass types exist for this event yet.</small>
                                             {% endfor %}
                                         </div>
                                         <small class="text-muted">Only selected pass types can enter this gate.</small>
@@ -203,19 +206,17 @@
                         <div class="col-md-6">
                             <label class="form-label">Gate Name *</label>
                             <input type="text" class="form-control" name="gate_name" required
-                                   placeholder="e.g., Main Entrance, VIP Gate">
+                                   placeholder="e.g., Main Gate, VIP Gate">
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">Gate Type</label>
                             <select class="form-select" name="gate_type">
-                                <option value="General" selected>General</option>
-                                <option value="VIP">VIP</option>
-                                <option value="Staff">Staff</option>
-                                <option value="Backstage">Backstage</option>
-                                <option value="Entrance">Entrance</option>
-                                <option value="Exit">Exit</option>
+                                {% for option in gate_type_options %}
+                                    <option value="{{ option }}" {% if option == 'General' %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
                             </select>
+                            <small class="text-muted">Gate type options follow pass types in this event.</small>
                         </div>
 
                         <div class="col-12">
@@ -238,9 +239,11 @@
                                         {{ pt.type_name }}
                                     </label>
                                 </div>
+                                {% else %}
+                                <small class="text-muted">No pass types exist for this event yet.</small>
                                 {% endfor %}
                             </div>
-                            <small class="text-muted">Select which pass types can enter this gate.</small>
+                            <small class="text-muted">Only pass types generated in this event are shown here.</small>
                         </div>
 
                         <div class="col-12">

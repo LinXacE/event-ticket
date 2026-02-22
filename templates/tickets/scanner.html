@@ -13,6 +13,21 @@
 
     <div class="row justify-content-center">
         <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <label for="event-select" class="form-label fw-semibold mb-2">
+                        <i class="fas fa-calendar-alt me-2"></i>Scanner Event
+                    </label>
+                    <select id="event-select" class="form-select form-select-lg">
+                        <option value="">-- Select Event --</option>
+                        {% for event in events %}
+                            <option value="{{ event.id }}">{{ event.event_name }} ({{ event.event_date.strftime('%Y-%m-%d') }})</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">Ticket from another event will be denied with event mismatch details.</small>
+                </div>
+            </div>
+
             <!-- Scanner Section -->
             <div class="card border-0 shadow-lg mb-4">
                 <div class="card-body p-4">
@@ -68,6 +83,12 @@ function startScanner() {
     const stopBtn = document.getElementById('stop-scanner');
     
     if (isScanning) return;
+
+    const selectedEvent = getSelectedEventId();
+    if (!selectedEvent) {
+        alert('Please select an event before starting scanner.');
+        return;
+    }
     
     html5QrcodeScanner = new Html5Qrcode("reader");
     
@@ -114,12 +135,14 @@ function validateTicket(code) {
     }
     
     // Send to backend
+    const selectedEvent = getSelectedEventId();
+
     fetch('/tickets/scan/by-code', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code: code })
+        body: JSON.stringify({ code: code, event_id: selectedEvent })
     })
     .then(response => response.json())
     .then(data => {
@@ -151,10 +174,16 @@ function showResult(data) {
         `;
         playSuccessSound();
     } else {
+        const mismatchHtml = data.event_mismatch
+            ? `<p><small><strong>Scanner Event:</strong> ${data.selected_event || 'Unknown'}</small></p>
+               <p><small><strong>Ticket Event:</strong> ${data.ticket_event || 'Unknown'}</small></p>`
+            : '';
+
         contentDiv.innerHTML = `
             <div class="alert alert-danger" role="alert">
                 <h4 class="alert-heading"><i class="fas fa-times-circle"></i> Invalid Ticket</h4>
                 <p>${data.message}</p>
+                ${mismatchHtml}
                 ${data.scanned_at ? `<p><small>Previously scanned at: ${data.scanned_at}</small></p>` : ''}
                 ${data.scanned_by ? `<p><small>Scanned by: ${data.scanned_by}</small></p>` : ''}
             </div>
@@ -171,6 +200,12 @@ function showResult(data) {
             startScanner();
         }
     }, 3000);
+}
+
+function getSelectedEventId() {
+    const eventSelect = document.getElementById('event-select');
+    const value = eventSelect ? eventSelect.value : '';
+    return value ? parseInt(value, 10) : null;
 }
 
 // Sound effects
@@ -210,6 +245,10 @@ document.getElementById('stop-scanner').addEventListener('click', stopScanner);
 
 document.getElementById('manual-submit').addEventListener('click', () => {
     const code = document.getElementById('manual-code').value.trim();
+    if (!getSelectedEventId()) {
+        alert('Please select an event first.');
+        return;
+    }
     if (code) {
         validateTicket(code);
         document.getElementById('manual-code').value = '';
@@ -219,6 +258,13 @@ document.getElementById('manual-submit').addEventListener('click', () => {
 document.getElementById('manual-code').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         document.getElementById('manual-submit').click();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const eventSelect = document.getElementById('event-select');
+    if (eventSelect && eventSelect.options.length > 1) {
+        eventSelect.selectedIndex = 1;
     }
 });
 </script>

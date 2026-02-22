@@ -1,10 +1,18 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from models import Event, TicketBatch, Ticket, Promotion
 from database import db
 from utils.barcode_generator import create_event_pass_barcode
+from utils.capacity import get_event_capacity_snapshot
+from utils.scanner_access import (
+    get_scannable_active_events,
+    user_can_scan_event,
+    user_has_event_wide_scan_access
+)
 import secrets
 import string
+import os
+import shutil
 from datetime import datetime
 
 
@@ -15,6 +23,18 @@ def generate_ticket_code(length=8):
     """Generate a random ticket code"""
     characters = string.ascii_uppercase + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
+
+
+def _event_for_ticket(ticket: Ticket):
+    if not ticket or not ticket.batch:
+        return None
+    return Event.query.get(ticket.batch.event_id)
+
+
+def _can_manage_event(event: Event):
+    if not event:
+        return False
+    return user_can_scan_event(current_user, event)
 
 
 @tickets_bp.route('/event/<int:event_id>')
@@ -30,8 +50,26 @@ def list_tickets(event_id):
 
     batches = TicketBatch.query.filter_by(event_id=event_id).all()
     tickets = []
+    static_root = current_app.static_folder
+    legacy_static_root = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
     for batch in batches:
-        tickets.extend(batch.tickets)
+        for ticket in batch.tickets:
+            local_path = f"barcodes/pass_{ticket.barcode}.png"
+            absolute_path = os.path.join(static_root, local_path.replace('/', os.sep))
+            exists = os.path.exists(absolute_path)
+
+            if not exists:
+                legacy_absolute = os.path.join(legacy_static_root, local_path.replace('/', os.sep))
+                if os.path.exists(legacy_absolute):
+                    os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
+                    try:
+                        shutil.copy2(legacy_absolute, absolute_path)
+                        exists = True
+                    except OSError:
+                        exists = False
+
+            ticket.local_barcode_path = local_path if exists else None
+            tickets.append(ticket)
 
     return render_template('tickets/list.html', event=event, batches=batches, tickets=tickets)
 
@@ -52,6 +90,27 @@ def create_batch(event_id):
             batch_type = request.form.get('batch_type', 'normal')
             seat_count = int(request.form.get('seat_count', 0))
             price = float(request.form.get('price', 0.0))
+
+            if not (batch_name or '').strip():
+                flash('Batch name is required', 'error')
+                return redirect(url_for('tickets.create_batch', event_id=event_id))
+
+            if seat_count < 1:
+                flash('Seat count must be at least 1', 'error')
+                return redirect(url_for('tickets.create_batch', event_id=event_id))
+
+            capacity = get_event_capacity_snapshot(event)
+            if seat_count > capacity['remaining']:
+                flash(
+                    (
+                        f'Capacity exceeded. This event allows {capacity["total_capacity"]} total attendees, '
+                        f'and {capacity["allocated_total"]} are already allocated '
+                        f'({capacity["pass_count"]} passes + {capacity["ticket_count"]} tickets). '
+                        f'Remaining capacity: {max(capacity["remaining"], 0)}.'
+                    ),
+                    'error'
+                )
+                return redirect(url_for('tickets.create_batch', event_id=event_id))
 
             batch = TicketBatch(
                 event_id=event_id,
@@ -136,6 +195,15 @@ def scan_ticket(ticket_id):
     """Scan and validate a ticket by ID"""
     try:
         ticket = Ticket.query.get_or_404(ticket_id)
+        event = _event_for_ticket(ticket)
+        if not _can_manage_event(event):
+            return jsonify({'success': False, 'message': 'Not authorized for this event'}), 403
+
+        if not user_has_event_wide_scan_access(current_user, event):
+            return jsonify({
+                'success': False,
+                'message': 'Your scanner assignment is gate-specific. Use Validate Pass page and choose your assigned gate.'
+            }), 403
 
         if ticket.status == 'used':
             return jsonify({
@@ -179,16 +247,51 @@ def scan_by_code():
         if not request.is_json:
             return jsonify({'success': False, 'message': 'Invalid JSON request'}), 400
 
-        code = request.json.get('code')
+        code = (request.json.get('code') or '').strip()
+        code = code.replace('\u200b', '').replace('\ufeff', '')
         if not code:
             return jsonify({'success': False, 'message': 'Code is required'}), 400
 
+        upper_code = code.upper()
         ticket = Ticket.query.filter(
-            (Ticket.ticket_code == code) | (Ticket.barcode == code)
+            (Ticket.ticket_code == code) |
+            (Ticket.ticket_code == upper_code) |
+            (Ticket.barcode == code) |
+            (Ticket.barcode == upper_code)
         ).first()
 
         if not ticket:
             return jsonify({'success': False, 'message': 'Ticket not found'}), 404
+
+        event = _event_for_ticket(ticket)
+        selected_event_id = request.json.get('event_id')
+        if selected_event_id is not None and selected_event_id != '':
+            try:
+                selected_event_id = int(selected_event_id)
+            except (ValueError, TypeError):
+                return jsonify({'success': False, 'message': 'event_id must be a valid integer'}), 400
+
+            if event and event.id != selected_event_id:
+                selected_event = Event.query.get(selected_event_id)
+                return jsonify({
+                    'success': False,
+                    'message': (
+                        f'Wrong event ticket. This ticket belongs to "{event.event_name}" '
+                        f'but scanner is set to "{selected_event.event_name if selected_event else f"Event #{selected_event_id}"}".'
+                    ),
+                    'event_mismatch': True,
+                    'ticket_event': event.event_name,
+                    'selected_event': selected_event.event_name if selected_event else None
+                }), 403
+
+        if not _can_manage_event(event):
+            return jsonify({'success': False, 'message': 'Not authorized for this event'}), 403
+
+        if not user_has_event_wide_scan_access(current_user, event):
+            return jsonify({
+                'success': False,
+                'message': 'Your scanner assignment is gate-specific. Use Validate Pass page and choose your assigned gate.'
+            }), 403
 
         if ticket.status == 'used':
             return jsonify({
@@ -227,4 +330,6 @@ def scan_by_code():
 @login_required
 def scanner():
     """Ticket scanner page"""
-    return render_template('tickets/scanner.html')
+    events = get_scannable_active_events(current_user, event_wide_only=True)
+
+    return render_template('tickets/scanner.html', events=events)

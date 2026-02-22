@@ -70,6 +70,8 @@
                                     <th>Participant</th>
                                     <th>Email</th>
                                     <th>Pass Type</th>
+                                    <th>QR</th>
+                                    <th>Barcode</th>
                                     <th>Status</th>
                                     <th>Created</th>
                                     <th>Actions</th>
@@ -87,6 +89,34 @@
                                         <span class="badge bg-info">{{ pass.pass_type.type_name if pass.pass_type else 'Standard' }}</span>
                                     </td>
                                     <td>
+                                        {% if pass.qr_public_path and pass.qr_exists %}
+                                            <a href="{{ url_for('static', filename=pass.qr_public_path) }}" target="_blank" title="Open QR">
+                                                <img src="{{ url_for('static', filename=pass.qr_public_path) }}"
+                                                     alt="QR"
+                                                     class="img-thumbnail"
+                                                     style="height: 44px; width: 44px; object-fit: contain;">
+                                            </a>
+                                        {% elif pass.qr_public_path %}
+                                            <span class="badge bg-danger-subtle text-danger">Missing</span>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if pass.barcode_public_path and pass.barcode_exists %}
+                                            <a href="{{ url_for('static', filename=pass.barcode_public_path) }}" target="_blank" title="Open Barcode">
+                                                <img src="{{ url_for('static', filename=pass.barcode_public_path) }}"
+                                                     alt="Barcode"
+                                                     class="img-thumbnail"
+                                                     style="height: 44px; width: 120px; object-fit: contain;">
+                                            </a>
+                                        {% elif pass.barcode_public_path %}
+                                            <span class="badge bg-danger-subtle text-danger">Missing</span>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         {% if pass.is_validated %}
                                             <span class="badge bg-success">Validated</span>
                                         {% else %}
@@ -96,17 +126,17 @@
                                     <td>{{ pass.created_at.strftime('%b %d, %Y %I:%M %p') }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            {% if pass.qr_code_path %}
-                                            <a href="{{ url_for('static', filename=pass.qr_code_path) }}" target="_blank" class="btn btn-outline-primary" title="View QR Code">
+                                            {% if pass.qr_public_path %}
+                                            <a href="{{ url_for('static', filename=pass.qr_public_path) }}" target="_blank" class="btn btn-outline-primary" title="View QR Code">
                                                 <i class="fas fa-qrcode"></i>
                                             </a>
                                             {% endif %}
-                                            {% if pass.barcode_path %}
-                                            <a href="{{ url_for('static', filename=pass.barcode_path) }}" target="_blank" class="btn btn-outline-secondary" title="View Barcode">
+                                            {% if pass.barcode_public_path %}
+                                            <a href="{{ url_for('static', filename=pass.barcode_public_path) }}" target="_blank" class="btn btn-outline-secondary" title="View Barcode">
                                                 <i class="fas fa-barcode"></i>
                                             </a>
                                             {% endif %}
-                                            <button class="btn btn-outline-info" onclick="copyPassCode('{{ pass.pass_code }}')" title="Copy Code">
+                                            <button class="btn btn-outline-info" onclick="copyPassCode(this, '{{ pass.pass_code }}')" title="Copy Code">
                                                 <i class="fas fa-copy"></i>
                                             </button>
                                         </div>
@@ -179,17 +209,16 @@
 
 <!-- JavaScript -->
 <script>
-function copyPassCode(code) {
+function copyPassCode(button, code) {
     navigator.clipboard.writeText(code).then(function() {
         // Show success feedback
-        const btn = event.target.closest('button');
-        const originalHTML = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i>';
-        btn.classList.add('btn-success');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        button.classList.add('btn-success');
         
         setTimeout(function() {
-            btn.innerHTML = originalHTML;
-            btn.classList.remove('btn-success');
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
         }, 2000);
     });
 }

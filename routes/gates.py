@@ -3,13 +3,56 @@ from database import db
 from models import (
     Event, Gate, GateAccessRule, PassType,
     EventPass, ValidationLog, GateValidationLog,
-    OfflineValidationQueue, RealtimeAlert, DuplicateAlertSetting
+    TicketGateValidationLog,
+    EventScannerAssignment, EventScannerInvite, OfflineValidationQueue, RealtimeAlert, DuplicateAlertSetting
 )
 from flask_login import login_required, current_user
 from datetime import datetime
 import json
+from utils.scanner_access import get_scannable_active_gates
 
 bp = Blueprint('gates', __name__, url_prefix='/gates')
+
+GATE_TYPE_ENUM_VALUES = (
+    'General',
+    'VIP',
+    'Staff',
+    'Participant',
+    'Judge',
+    'Custom',
+)
+
+EVENT_DRIVEN_GATE_TYPES = (
+    'VIP',
+    'Staff',
+    'Participant',
+    'Judge',
+)
+
+
+def _event_pass_types(event_id: int):
+    """Return distinct pass types that are actually used by passes in this event."""
+    return (
+        PassType.query
+        .join(EventPass, EventPass.pass_type_id == PassType.id)
+        .filter(EventPass.event_id == event_id)
+        .distinct()
+        .order_by(PassType.type_name.asc())
+        .all()
+    )
+
+
+def _gate_type_options(pass_types):
+    """
+    Gate type options are event-driven:
+    - always include General and Custom
+    - include VIP/Staff/Participant/Judge only if that pass type exists in this event
+    """
+    names = {pt.type_name for pt in pass_types}
+    options = ['General']
+    options.extend([name for name in EVENT_DRIVEN_GATE_TYPES if name in names])
+    options.append('Custom')
+    return options
 
 
 # =========================
@@ -18,16 +61,19 @@ bp = Blueprint('gates', __name__, url_prefix='/gates')
 @bp.route('/api/active', methods=['GET'])
 @login_required
 def active_gates_api():
-    """Return all active gates (for scanner dropdown)."""
-    gates = Gate.query.filter_by(is_active=True).all()
+    """Return active gates for scanner dropdown, optionally filtered by event."""
+    event_id = request.args.get('event_id', type=int)
+    gates = get_scannable_active_gates(current_user, event_id=event_id)
 
     gate_list = []
     for g in gates:
+        event = Event.query.get(g.event_id)
         gate_list.append({
             "id": g.id,
             "name": g.gate_name,
             "type": g.gate_type,
-            "event_id": g.event_id
+            "event_id": g.event_id,
+            "event_name": event.event_name if event else f'Event #{g.event_id}'
         })
 
     return jsonify({"success": True, "gates": gate_list}), 200
@@ -48,20 +94,16 @@ def event_gates(event_id):
         return redirect(url_for('dashboard.home'))
 
     gates = Gate.query.filter_by(event_id=event_id).all()
+    pass_types = _event_pass_types(event_id)
+    gate_type_options = _gate_type_options(pass_types)
 
-    # ✅ OPTION A FIX:
-    # Show ONLY pass types that exist for THIS event
-    # (pass types used by EventPass rows for this event)
-    pass_types = (
-        db.session.query(PassType)
-        .join(EventPass, EventPass.pass_type_id == PassType.id)
-        .filter(EventPass.event_id == event_id)
-        .distinct()
-        .order_by(PassType.type_name.asc())
-        .all()
+    return render_template(
+        'gates/index.html',
+        event=event,
+        gates=gates,
+        pass_types=pass_types,
+        gate_type_options=gate_type_options
     )
-
-    return render_template('gates/index.html', event=event, gates=gates, pass_types=pass_types)
 
 
 @bp.route('/create/<int:event_id>', methods=['POST'])
@@ -74,10 +116,32 @@ def create_gate(event_id):
         flash('You do not have permission to manage gates for this event', 'danger')
         return redirect(url_for('dashboard.home'))
 
+    gate_name = (request.form.get('gate_name') or '').strip()
+    if not gate_name:
+        flash('Gate name is required.', 'danger')
+        return redirect(url_for('gates.event_gates', event_id=event_id))
+
+    event_pass_types = _event_pass_types(event_id)
+    event_pass_type_ids = [str(pt.id) for pt in event_pass_types]
+    event_pass_type_id_set = set(event_pass_type_ids)
+
+    gate_type = (request.form.get('gate_type') or 'General').strip()
+    if gate_type not in GATE_TYPE_ENUM_VALUES:
+        gate_type = 'General'
+
+    gate_type_options = _gate_type_options(event_pass_types)
+    if gate_type not in gate_type_options:
+        flash(
+            f'Gate type "{gate_type}" is not available for this event yet. '
+            'Generate matching passes first or use General/Custom.',
+            'danger'
+        )
+        return redirect(url_for('gates.event_gates', event_id=event_id))
+
     gate = Gate(
         event_id=event_id,
-        gate_name=request.form.get('gate_name'),
-        gate_type=request.form.get('gate_type', 'General'),
+        gate_name=gate_name,
+        gate_type=gate_type,
         gate_description=request.form.get('gate_description'),
         is_active=(request.form.get('is_active') == 'on')
     )
@@ -85,8 +149,17 @@ def create_gate(event_id):
     db.session.add(gate)
     db.session.commit()
 
-    # Create access rules for selected pass types
-    selected_pass_types = request.form.getlist('pass_types')
+    selected_pass_types = [
+        pt_id for pt_id in request.form.getlist('pass_types')
+        if pt_id in event_pass_type_id_set
+    ]
+    if not selected_pass_types and event_pass_type_ids:
+        selected_pass_types = list(event_pass_type_ids)
+        flash('No pass type selected, so all event pass types were enabled for this gate.', 'info')
+
+    if not event_pass_type_ids:
+        flash('Gate created without access rules because this event has no generated passes yet.', 'warning')
+
     for pass_type_id in selected_pass_types:
         rule = GateAccessRule(
             gate_id=gate.id,
@@ -111,15 +184,47 @@ def update_gate(gate_id):
         flash('You do not have permission to manage gates for this event', 'danger')
         return redirect(url_for('dashboard.home'))
 
-    gate.gate_name = request.form.get('gate_name')
-    gate.gate_type = request.form.get('gate_type')
+    event_pass_types = _event_pass_types(event.id)
+    event_pass_type_ids = [str(pt.id) for pt in event_pass_types]
+    event_pass_type_id_set = set(event_pass_type_ids)
+
+    gate_type = (request.form.get('gate_type') or 'General').strip()
+    if gate_type not in GATE_TYPE_ENUM_VALUES:
+        gate_type = 'General'
+
+    gate_type_options = _gate_type_options(event_pass_types)
+    if gate_type not in gate_type_options:
+        flash(
+            f'Gate type "{gate_type}" is not available for this event yet. '
+            'Generate matching passes first or use General/Custom.',
+            'danger'
+        )
+        return redirect(url_for('gates.event_gates', event_id=event.id))
+
+    gate_name = (request.form.get('gate_name') or '').strip()
+    if not gate_name:
+        flash('Gate name is required.', 'danger')
+        return redirect(url_for('gates.event_gates', event_id=event.id))
+
+    gate.gate_name = gate_name
+    gate.gate_type = gate_type
     gate.gate_description = request.form.get('gate_description')
     gate.is_active = (request.form.get('is_active') == 'on')
 
     # Update access rules
     GateAccessRule.query.filter_by(gate_id=gate_id).delete()
 
-    selected_pass_types = request.form.getlist('pass_types')
+    selected_pass_types = [
+        pt_id for pt_id in request.form.getlist('pass_types')
+        if pt_id in event_pass_type_id_set
+    ]
+    if not selected_pass_types and event_pass_type_ids:
+        selected_pass_types = list(event_pass_type_ids)
+        flash('No pass type selected, so all event pass types were enabled for this gate.', 'info')
+
+    if not event_pass_type_ids:
+        flash('No access rules were added because this event has no generated passes yet.', 'warning')
+
     for pass_type_id in selected_pass_types:
         rule = GateAccessRule(
             gate_id=gate.id,
@@ -146,6 +251,9 @@ def delete_gate(gate_id):
 
     event_id = gate.event_id
 
+    TicketGateValidationLog.query.filter_by(gate_id=gate_id).delete(synchronize_session=False)
+    EventScannerInvite.query.filter_by(gate_id=gate_id).delete(synchronize_session=False)
+    EventScannerAssignment.query.filter_by(gate_id=gate_id).delete(synchronize_session=False)
     db.session.delete(gate)
     db.session.commit()
 
@@ -216,7 +324,7 @@ def download_offline_database(event_id):
         }
         offline_data['gates'].append(gate_data)
 
-    pass_types_all = PassType.query.all()
+    pass_types_all = _event_pass_types(event_id)
     for pt in pass_types_all:
         offline_data['pass_types'][pt.id] = pt.type_name
 

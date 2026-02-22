@@ -43,18 +43,13 @@
                             <label for="pass_type" class="form-label fw-bold">
                                 <i class="fas fa-ticket-alt text-success me-2"></i>Pass Type
                             </label>
-                            <input type="text" list="pass_type_options" class="form-control form-control-lg" id="pass_type" name="pass_type" placeholder="Enter custom or select from defaults" required>
-                <datalist id="pass_type_options">
-                    <option value="Judge">
-                    <option value="Mentor">
-                    <option value="Participant">
-                    <option value="Volunteer">
-                    <option value="VIP">
-                    <option value="Staff">
-                    <option value="Speaker">
-                    <option value="Sponsor">
-                </datalist>
-                <small class="form-text text-muted">Select a default type or type your own custom pass type</small>
+                            <select class="form-select form-select-lg" id="pass_type" name="pass_type" required>
+                                <option value="" selected disabled>Select pass type...</option>
+                                {% for pass_type in pass_types %}
+                                    <option value="{{ pass_type.type_name }}">{{ pass_type.type_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Ticket types are fixed by system configuration.</small>
                         </div>
 
                         <!-- Participant Name -->
@@ -72,7 +67,7 @@
                                 <i class="fas fa-envelope text-warning me-2"></i>Email Address
                             </label>
                             <input type="email" class="form-control form-control-lg" id="email" 
-                                   name="email" placeholder="participant@example.com" required>
+                                   name="participant_email" placeholder="participant@example.com" required>
                         </div>
 
                         <!-- Phone Number -->
@@ -81,7 +76,7 @@
                                 <i class="fas fa-phone text-danger me-2"></i>Phone Number
                             </label>
                             <input type="tel" class="form-control form-control-lg" id="phone" 
-                                   name="phone" placeholder="+1234567890" required>
+                                   name="participant_phone" placeholder="+1234567890" required>
                         </div>
 
                         <!-- Quantity (Batch Generation) -->

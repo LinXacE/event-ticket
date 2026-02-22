@@ -21,17 +21,48 @@ def home():
         all_events = Event.query.order_by(Event.created_at.desc()).all()
         events = [e for e in all_events if not is_recycled(e)][:5]
         total_events = len([e for e in all_events if not is_recycled(e)])
+        total_passes = EventPass.query.count()
+        validated_passes = EventPass.query.filter_by(is_validated=True).count()
     else:
         all_events = Event.query.filter_by(organizer_id=current_user.id).order_by(Event.created_at.desc()).all()
         events = [e for e in all_events if not is_recycled(e)][:5]
         total_events = len([e for e in all_events if not is_recycled(e)])
-
-    total_passes = EventPass.query.count()
-    validated_passes = EventPass.query.filter_by(is_validated=True).count()
+        total_passes = (
+            EventPass.query.join(Event, EventPass.event_id == Event.id)
+            .filter(Event.organizer_id == current_user.id)
+            .count()
+        )
+        validated_passes = (
+            EventPass.query.join(Event, EventPass.event_id == Event.id)
+            .filter(Event.organizer_id == current_user.id, EventPass.is_validated == True)  # noqa: E712
+            .count()
+        )
 
     recent_validations = ValidationLog.query.order_by(
         ValidationLog.validation_time.desc()
     ).limit(10).all()
+
+    recent_activities = []
+    for log in recent_validations:
+        status = (log.validation_status or '').lower()
+        color_map = {
+            'success': 'success',
+            'duplicate': 'warning',
+            'failed': 'danger',
+        }
+        icon_map = {
+            'success': 'check-circle',
+            'duplicate': 'exclamation-triangle',
+            'failed': 'times-circle',
+        }
+        participant = log.pass_obj.participant_name if log.pass_obj else 'Unknown participant'
+        event_name = log.pass_obj.event.event_name if log.pass_obj and log.pass_obj.event else 'Unknown event'
+        recent_activities.append({
+            'icon': icon_map.get(status, 'info-circle'),
+            'color': color_map.get(status, 'secondary'),
+            'description': f'{participant} - {event_name} ({status or "unknown"})',
+            'timestamp': log.validation_time,
+        })
 
     pass_stats = db.session.query(
         PassType.type_name,
@@ -42,15 +73,20 @@ def home():
         'total_events': total_events,
         'total_passes': total_passes,
         'validated_passes': validated_passes,
+        'total_participants': total_passes,
         'validation_rate': round((validated_passes / total_passes * 100) if total_passes > 0 else 0, 1)
     }
+
+    for event in events:
+        event.pass_count = len(event.passes)
 
     return render_template(
         'dashboard/index.html',
         events=events,
         stats=stats,
         pass_stats=pass_stats,
-        recent_validations=recent_validations
+        recent_validations=recent_validations,
+        recent_activities=recent_activities
     )
 
 
@@ -60,10 +96,9 @@ def profile():
     if request.method == 'POST':
         current_user.full_name = request.form.get('full_name')
         current_user.email = request.form.get('email')
-        current_user.phone = request.form.get('phone', '')
 
         if request.form.get('password'):
-            current_user.password = bcrypt.generate_password_hash(
+            current_user.password_hash = bcrypt.generate_password_hash(
                 request.form.get('password')
             ).decode('utf-8')
 
@@ -113,11 +148,15 @@ def analytics():
     if current_user.role == 'admin':
         total_events = Event.query.count()
         total_passes = EventPass.query.count()
+        validated_passes = EventPass.query.filter_by(is_validated=True).count()
     else:
         total_events = Event.query.filter_by(organizer_id=current_user.id).count()
         total_passes = EventPass.query.join(Event).filter(Event.organizer_id == current_user.id).count()
-
-    validated_passes = EventPass.query.filter_by(is_validated=True).count()
+        validated_passes = (
+            EventPass.query.join(Event)
+            .filter(Event.organizer_id == current_user.id, EventPass.is_validated == True)  # noqa: E712
+            .count()
+        )
 
     return render_template(
         'dashboard/analytics.html',

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Event Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">{{ event.event_name }}</h3>
+            <div class="text-muted">Admin Event Details</div>
+        </div>
+        <a href="{{ url_for('rbac.admin_events') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to All Events
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Date</div>
+                    <div class="fw-semibold">{{ event.event_date.strftime('%Y-%m-%d') if event.event_date else '-' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Location</div>
+                    <div class="fw-semibold">{{ event.location or '-' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Passes</div>
+                    <div class="fs-5 fw-semibold">{{ total_passes }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Validated</div>
+                    <div class="fs-5 fw-semibold">{{ validated_passes }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Tickets Used</div>
+                    <div class="fs-5 fw-semibold">{{ used_tickets }}/{{ total_tickets }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+            <strong>Gates</strong>
+        </div>
+        <div class="card-body">
+            {% if gates %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gate in gates %}
+                        <tr>
+                            <td>{{ gate.gate_name }}</td>
+                            <td>{{ gate.gate_type }}</td>
+                            <td>
+                                <span class="badge {{ 'bg-success' if gate.is_active else 'bg-secondary' }}">
+                                    {{ 'Active' if gate.is_active else 'Inactive' }}
+                                </span>
+                            </td>
+                            <td>{{ gate.gate_description or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-muted">No gates configured for this event.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

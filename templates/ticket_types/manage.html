@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket Types{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h3 class="mb-3">Ticket Types - {{ event.event_name }}</h3>
+    <p class="text-muted">Custom ticket type management is disabled in this build.</p>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Type Name</th>
+                    <th>Description</th>
+                    <th>Access Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket_type in ticket_types %}
+                <tr>
+                    <td>{{ ticket_type.id }}</td>
+                    <td>{{ ticket_type.type_name }}</td>
+                    <td>{{ ticket_type.description or '-' }}</td>
+                    <td>{{ ticket_type.access_level }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

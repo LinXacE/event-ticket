@@ -5,103 +5,77 @@
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <!-- Header -->
-            <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="col-xl-10">
+            <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #1e40af 0%, #0f766e 100%);">
                 <div class="card-body text-white py-4">
                     <h2 class="mb-2 text-center">
-                        <i class="fas fa-camera me-2"></i>QR/Barcode Scanner
+                        <i class="fas fa-camera me-2"></i>Event Access Scanner
                     </h2>
-                    <p class="mb-0 text-center opacity-75">Scan passes to validate event access</p>
+                    <p class="mb-0 text-center opacity-75">Scan pass or batch ticket code with strict event and gate validation</p>
                 </div>
             </div>
 
-            <div class="row">
-                <!-- Scanner Section -->
-                <div class="col-lg-6 mb-4">
+            <div class="row g-4">
+                <div class="col-lg-6">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white py-3">
-                            <h5 class="mb-0">
-                                <i class="fas fa-qrcode text-primary me-2"></i>Camera Scanner
-                            </h5>
+                            <h5 class="mb-0"><i class="fas fa-cogs text-primary me-2"></i>Scan Configuration</h5>
                         </div>
-                        <div class="card-body text-center">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="event-select" class="form-label">Select Event</label>
+                                <select class="form-select" id="event-select" required>
+                                    <option value="">-- Select Event --</option>
+                                    {% for event in events %}
+                                        <option value="{{ event.id }}">{{ event.event_name }} ({{ event.event_date.strftime('%Y-%m-%d') }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
 
-                            <!-- Gate select (required) -->
-                            <div class="mb-3 text-start">
-                                <label class="form-label">Select Gate</label>
-                                <select class="form-select form-select-lg" id="gate-select-camera" required>
+                            <div class="mb-3">
+                                <label for="gate-select" class="form-label">Select Gate</label>
+                                <select class="form-select" id="gate-select" required>
                                     <option value="">-- Select Gate --</option>
                                 </select>
-                                <small class="text-muted">Gate is required for access rules.</small>
+                                <small class="text-muted">Gate rules are checked against pass type and event.</small>
                             </div>
 
-                            <!-- Camera View -->
-                            <div id="scanner-container" class="mb-3" style="background: #000; border-radius: 10px; overflow: hidden;">
-                                <video id="scanner-video" playsinline muted width="100%" height="300" style="display: block;"></video>
-                                <canvas id="scanner-canvas" style="display: none;"></canvas>
-                            </div>
+                            <div id="reader" class="rounded border" style="width: 100%; min-height: 320px;"></div>
 
-                            <!-- Scanner Controls -->
-                            <div class="d-grid gap-2">
-                                <button id="start-scanner" class="btn btn-success btn-lg" type="button">
-                                    <i class="fas fa-play me-2"></i>Start Scanner
+                            <div class="d-grid gap-2 mt-3">
+                                <button id="start-scanner" class="btn btn-success" type="button">
+                                    <i class="fas fa-play me-2"></i>Start Camera Scanner
                                 </button>
-                                <button id="stop-scanner" class="btn btn-danger btn-lg" type="button" style="display: none;">
+                                <button id="stop-scanner" class="btn btn-danger" type="button" style="display: none;">
                                     <i class="fas fa-stop me-2"></i>Stop Scanner
                                 </button>
                             </div>
 
-                            <!-- Status Messages -->
-                            <div id="scanner-status" class="mt-3">
-                                <p class="text-muted mb-0">
-                                    <i class="fas fa-info-circle me-2"></i>Click "Start Scanner" to begin
-                                </p>
-                            </div>
-
-                            <div class="mt-3 text-muted small text-start">
-                                <strong>Note:</strong> Your current camera scanning loop is a placeholder. Manual entry works now,
-                                and you can later plug in a real scanner library (jsQR / QuaggaJS).
+                            <div id="scanner-status" class="mt-3 text-muted small">
+                                Select event + gate, then start scanner.
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Manual Entry & Results -->
-                <div class="col-lg-6 mb-4">
-                    <!-- Manual Entry -->
+                <div class="col-lg-6">
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white py-3">
-                            <h5 class="mb-0">
-                                <i class="fas fa-keyboard text-warning me-2"></i>Manual Entry
-                            </h5>
+                            <h5 class="mb-0"><i class="fas fa-keyboard text-warning me-2"></i>Manual Code Validation</h5>
                         </div>
                         <div class="card-body">
                             <form id="manual-validation-form">
-
-                                <!-- Gate select (required) -->
                                 <div class="mb-3">
-                                    <label class="form-label">Select Gate</label>
-                                    <select class="form-select form-select-lg" id="gate-select-manual" required>
-                                        <option value="">-- Select Gate --</option>
-                                    </select>
-                                    <small class="text-muted">Gate is required for access rules.</small>
+                                    <label for="manual-code" class="form-label">Pass / Ticket Code</label>
+                                    <input type="text" id="manual-code" class="form-control" placeholder="Paste scanned code or type pass/ticket code" required>
                                 </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Pass Code</label>
-                                    <input type="text" class="form-control form-control-lg"
-                                           id="manual-code" placeholder="Enter pass code (QR content)" required>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary btn-lg w-100">
-                                    <i class="fas fa-check me-2"></i>Validate Pass
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-check me-2"></i>Validate Manual Code
                                 </button>
                             </form>
                         </div>
                     </div>
 
-                    <!-- Validation Result -->
                     <div id="validation-result" style="display: none;">
                         <div class="card border-0 shadow-sm">
                             <div class="card-header py-3" id="result-header">
@@ -113,12 +87,9 @@
                 </div>
             </div>
 
-            <!-- Recent Validations -->
             <div class="card border-0 shadow-sm mt-4">
                 <div class="card-header bg-white py-3">
-                    <h5 class="mb-0">
-                        <i class="fas fa-history text-success me-2"></i>Recent Validations
-                    </h5>
+                    <h5 class="mb-0"><i class="fas fa-history text-success me-2"></i>Recent Validations</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -128,13 +99,14 @@
                                     <th>Time</th>
                                     <th>Participant</th>
                                     <th>Pass Type</th>
-                                    <th>Event</th>
+                                    <th>Pass Event</th>
                                     <th>Status</th>
+                                    <th>Message</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted">No validations yet</td>
+                                    <td colspan="6" class="text-center text-muted">No validations yet</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -147,272 +119,246 @@
 </div>
 
 <style>
-    .card { border-radius: 15px; }
-    #scanner-video { max-width: 100%; height: auto; }
-    .validation-success { background-color: #d4edda; border-color: #c3e6cb; }
-    .validation-error { background-color: #f8d7da; border-color: #f5c6cb; }
+    .validation-success { background-color: #dcfce7; }
+    .validation-error { background-color: #fee2e2; }
 </style>
 
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-let videoStream = null;
-let scanningInterval = null;
+let html5Qrcode = null;
+let isScanning = false;
+let isValidating = false;
+let lastScannedCode = null;
+let lastScannedAt = 0;
 
-function setScannerStatus(html) {
-    document.getElementById('scanner-status').innerHTML = html;
+function setScannerStatus(text, type = 'muted') {
+    const status = document.getElementById('scanner-status');
+    status.className = `mt-3 small text-${type}`;
+    status.textContent = text;
 }
 
-/**
- * Many browsers block webcam on HTTP unless it's localhost.
- * Your URL is http://192.168.x.x:5000 -> not secure -> camera blocked.
- */
-function canUseCameraHere() {
-    const isLocalhost =
-        location.hostname === 'localhost' ||
-        location.hostname === '127.0.0.1' ||
-        location.hostname === '::1';
+async function loadGatesForSelectedEvent() {
+    const eventId = document.getElementById('event-select').value;
+    const gateSelect = document.getElementById('gate-select');
+    gateSelect.innerHTML = '<option value="">-- Select Gate --</option>';
 
-    // Must be secure context OR localhost
-    if (!window.isSecureContext && !isLocalhost) {
-        setScannerStatus(`
-            <p class="text-danger mb-0">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                Camera is blocked because this site is running on <b>HTTP</b> (${location.hostname}).
-                <br>
-                Use <b>https://</b> or run on <b>http://localhost</b> to enable camera access.
-            </p>
-        `);
-        return false;
+    if (!eventId) {
+        return;
     }
 
-    // Must have mediaDevices.getUserMedia available
-    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-        setScannerStatus(`
-            <p class="text-danger mb-0">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                Camera API not available (<code>navigator.mediaDevices.getUserMedia</code>).
-                <br>
-                Try Chrome/Edge + HTTPS or localhost.
-            </p>
-        `);
-        return false;
-    }
-
-    return true;
-}
-
-async function loadGates() {
     try {
-        const res = await fetch('/gates/api/active');
+        const res = await fetch(`/gates/api/active?event_id=${encodeURIComponent(eventId)}`);
         const data = await res.json();
 
-        const cameraSel = document.getElementById('gate-select-camera');
-        const manualSel = document.getElementById('gate-select-manual');
-
-        const baseOption = '<option value="">-- Select Gate --</option>';
-        cameraSel.innerHTML = baseOption;
-        manualSel.innerHTML = baseOption;
-
-        if (data.success && Array.isArray(data.gates) && data.gates.length) {
-            data.gates.forEach(g => {
-                const label = `${g.name} (${g.type}) - Event ${g.event_id}`;
-
-                const opt1 = document.createElement('option');
-                opt1.value = g.id;
-                opt1.textContent = label;
-                cameraSel.appendChild(opt1);
-
-                const opt2 = document.createElement('option');
-                opt2.value = g.id;
-                opt2.textContent = label;
-                manualSel.appendChild(opt2);
-            });
-        } else {
-            cameraSel.innerHTML = '<option value="">No active gates found</option>';
-            manualSel.innerHTML = '<option value="">No active gates found</option>';
-        }
-    } catch (e) {
-        console.error('Failed to load gates', e);
-        setScannerStatus(`
-            <p class="text-danger mb-0">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                Failed to load gates. Check <code>/gates/api/active</code>.
-            </p>
-        `);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    loadGates();
-    // show warning early (no crash)
-    canUseCameraHere();
-});
-
-// Start scanner
-document.getElementById('start-scanner').addEventListener('click', async () => {
-    try {
-        const gateId = document.getElementById('gate-select-camera').value;
-        if (!gateId) {
-            setScannerStatus('<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Please select a gate first.</p>');
+        if (!data.success || !Array.isArray(data.gates) || data.gates.length === 0) {
+            gateSelect.innerHTML = '<option value="">No active gates for selected event</option>';
+            setScannerStatus('No active gates found for selected event.', 'warning');
             return;
         }
 
-        // prevent crash on HTTP / missing API
-        if (!canUseCameraHere()) return;
-
-        const video = document.getElementById('scanner-video');
-
-        // Optional confirm
-        const permissionGranted = confirm(
-            '📷 Camera Access Required\n\n' +
-            'This QR scanner needs access to your camera to scan event passes. ' +
-            'Please click "Allow" when your browser asks for camera permission.\n\n' +
-            'Click OK to enable camera access.'
-        );
-
-        if (!permissionGranted) {
-            setScannerStatus('<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Camera access was cancelled.</p>');
-            return;
-        }
-
-        videoStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' },
-            audio: false
+        data.gates.forEach(gate => {
+            const opt = document.createElement('option');
+            opt.value = gate.id;
+            opt.textContent = `${gate.name} (${gate.type})`;
+            gateSelect.appendChild(opt);
         });
 
-        video.srcObject = videoStream;
-        await video.play();
+        setScannerStatus('Gate list loaded.', 'success');
+    } catch (err) {
+        setScannerStatus('Failed to load gates.', 'danger');
+    }
+}
 
+function getSelectedGateId() {
+    const gateId = document.getElementById('gate-select').value;
+    return gateId ? parseInt(gateId, 10) : null;
+}
+
+async function startScanner() {
+    if (isScanning) {
+        return;
+    }
+
+    const eventId = document.getElementById('event-select').value;
+    const gateId = getSelectedGateId();
+
+    if (!eventId) {
+        setScannerStatus('Please select an event first.', 'warning');
+        return;
+    }
+
+    if (!gateId) {
+        setScannerStatus('Please select a gate first.', 'warning');
+        return;
+    }
+
+    if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        setScannerStatus('Camera requires HTTPS (or localhost). Manual code still works.', 'danger');
+        return;
+    }
+
+    try {
+        html5Qrcode = new Html5Qrcode('reader');
+        await html5Qrcode.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 260, height: 260 } },
+            async (decodedText) => {
+                const now = Date.now();
+                if (isValidating) {
+                    return;
+                }
+                if (decodedText === lastScannedCode && now - lastScannedAt < 2000) {
+                    return;
+                }
+
+                lastScannedCode = decodedText;
+                lastScannedAt = now;
+                isValidating = true;
+                await validatePass(decodedText, 'camera');
+                setTimeout(() => { isValidating = false; }, 600);
+            },
+            () => {}
+        );
+
+        isScanning = true;
         document.getElementById('start-scanner').style.display = 'none';
         document.getElementById('stop-scanner').style.display = 'block';
-        setScannerStatus('<p class="text-success mb-0"><i class="fas fa-check-circle me-2"></i>Scanner active - Point camera at QR/Barcode</p>');
-
-        startScanning();
-    } catch (error) {
-        console.error('Camera error:', error);
-        let errorMessage = 'Camera error: ';
-
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            errorMessage += 'Permission denied. Please allow camera access in your browser settings.';
-        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-            errorMessage += 'No camera found. Please connect a camera device.';
-        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-            errorMessage += 'Camera is already in use by another application.';
-        } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
-            errorMessage += 'Camera does not support rear-facing mode.';
-        } else {
-            errorMessage += (error.message || 'Unknown error occurred');
-        }
-
-        setScannerStatus(`<p class="text-danger mb-0"><i class="fas fa-exclamation-circle me-2"></i>${errorMessage}</p>`);
+        setScannerStatus('Scanner is active. Point camera at QR or barcode.', 'success');
+    } catch (err) {
+        setScannerStatus(`Unable to start scanner: ${err}`, 'danger');
     }
-});
+}
 
-// Stop scanner
-document.getElementById('stop-scanner').addEventListener('click', () => stopScanner());
+async function stopScanner() {
+    if (!isScanning || !html5Qrcode) {
+        return;
+    }
 
-function stopScanner() {
-    if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-        videoStream = null;
+    try {
+        await html5Qrcode.stop();
+        await html5Qrcode.clear();
+    } catch (err) {
+        // Keep UI responsive even if stop fails
     }
-    if (scanningInterval) {
-        clearInterval(scanningInterval);
-        scanningInterval = null;
-    }
+
+    html5Qrcode = null;
+    isScanning = false;
     document.getElementById('start-scanner').style.display = 'block';
     document.getElementById('stop-scanner').style.display = 'none';
-    setScannerStatus('<p class="text-muted mb-0"><i class="fas fa-info-circle me-2"></i>Scanner stopped</p>');
+    setScannerStatus('Scanner stopped.', 'muted');
 }
-
-function startScanning() {
-    // Placeholder:
-    // Plug in jsQR / QuaggaJS later, and call validatePass(scannedText, 'camera')
-    scanningInterval = setInterval(() => {
-        // scanning logic would go here
-    }, 150);
-}
-
-// Manual validation form
-document.getElementById('manual-validation-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const code = document.getElementById('manual-code').value.trim();
-    await validatePass(code, 'manual');
-});
 
 async function validatePass(code, source) {
+    const gateId = getSelectedGateId();
+    if (!gateId) {
+        displayValidationResult({ message: 'Please select a gate first.' }, false);
+        return;
+    }
+
     try {
-        const gateId =
-            (source === 'manual')
-                ? document.getElementById('gate-select-manual').value
-                : document.getElementById('gate-select-camera').value;
-
-        if (!gateId) {
-            displayValidationResult({ message: "Please select a gate first." }, false);
-            return;
-        }
-
         const response = await fetch('/validate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: code, gate_id: parseInt(gateId) })
+            body: JSON.stringify({ code: code.trim(), gate_id: gateId })
         });
 
         const result = await response.json();
-        displayValidationResult(result, response.ok);
+        const ok = response.ok && result.success;
+        displayValidationResult(result, ok);
 
-        if (response.ok) addToHistory(result.pass_info);
-    } catch (error) {
-        displayValidationResult({ message: 'Connection error: ' + error.message }, false);
+        addToHistory(result, ok, source);
+
+        if (source === 'manual') {
+            document.getElementById('manual-code').value = '';
+        }
+    } catch (err) {
+        const msg = { message: `Connection error: ${err.message}` };
+        displayValidationResult(msg, false);
+        addToHistory(msg, false, source);
     }
 }
 
 function displayValidationResult(result, success) {
-    const resultDiv = document.getElementById('validation-result');
-    const resultHeader = document.getElementById('result-header');
-    const resultTitle = document.getElementById('result-title');
-    const resultBody = document.getElementById('result-body');
+    const box = document.getElementById('validation-result');
+    const header = document.getElementById('result-header');
+    const title = document.getElementById('result-title');
+    const body = document.getElementById('result-body');
 
-    resultDiv.style.display = 'block';
+    box.style.display = 'block';
 
     if (success) {
-        resultHeader.className = 'card-header py-3 validation-success';
-        resultTitle.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>Validation Successful';
-        resultBody.innerHTML = `
-            <p class="mb-2"><strong>Participant:</strong> ${result.pass_info.participant_name ?? ''}</p>
-            <p class="mb-2"><strong>Email:</strong> ${result.pass_info.email ?? ''}</p>
-            <p class="mb-2"><strong>Pass Type:</strong> <span class="badge bg-primary">${result.pass_info.pass_type ?? ''}</span></p>
-            <p class="mb-2"><strong>Event:</strong> ${result.pass_info.event ?? ''}</p>
-            <p class="mb-0"><strong>Validated:</strong> ${result.pass_info.validated_at ?? ''}</p>
+        header.className = 'card-header py-3 validation-success';
+        title.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>Validation Successful';
+        body.innerHTML = `
+            <p class="mb-2"><strong>Participant:</strong> ${result.pass_info?.participant_name || ''}</p>
+            <p class="mb-2"><strong>Pass Type:</strong> ${result.pass_info?.pass_type || ''}</p>
+            <p class="mb-2"><strong>Event:</strong> ${result.pass_info?.event || ''}</p>
+            <p class="mb-0"><strong>Validated At:</strong> ${result.pass_info?.validated_at || ''}</p>
         `;
     } else {
-        resultHeader.className = 'card-header py-3 validation-error';
-        resultTitle.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-2"></i>Validation Failed';
-        resultBody.innerHTML = `<p class="mb-0 text-danger">${result.message ?? 'Validation failed'}</p>`;
-    }
+        header.className = 'card-header py-3 validation-error';
+        title.innerHTML = '<i class="fas fa-times-circle text-danger me-2"></i>Validation Failed';
 
-    setTimeout(() => { resultDiv.style.display = 'none'; }, 5000);
+        const mismatchHtml = result.event_mismatch
+            ? `<div class="alert alert-warning mb-2 py-2">
+                    <div><strong>Selected Gate Event:</strong> ${result.selected_gate_event || 'Unknown'}</div>
+                    <div><strong>Pass Belongs To:</strong> ${result.pass_event || 'Unknown'}</div>
+               </div>`
+            : '';
+
+        body.innerHTML = `
+            <p class="mb-2 text-danger">${result.message || 'Validation failed'}</p>
+            ${mismatchHtml}
+            <p class="mb-0"><strong>Pass Event:</strong> ${result.pass_info?.event || result.pass_event || 'Unknown'}</p>
+        `;
+    }
 }
 
-function addToHistory(passInfo) {
+function addToHistory(result, success, source) {
     const tbody = document.querySelector('#validation-history tbody');
-
     if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
         tbody.innerHTML = '';
     }
 
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString();
-
+    const info = result.pass_info || {};
     const row = tbody.insertRow(0);
     row.innerHTML = `
-        <td>${timeStr}</td>
-        <td>${passInfo.participant_name ?? ''}</td>
-        <td><span class="badge bg-primary">${passInfo.pass_type ?? ''}</span></td>
-        <td>${passInfo.event ?? ''}</td>
-        <td><span class="badge bg-success">Validated</span></td>
+        <td>${new Date().toLocaleTimeString()}</td>
+        <td>${info.participant_name || '-'}</td>
+        <td>${info.pass_type || '-'}</td>
+        <td>${info.event || result.pass_event || '-'}</td>
+        <td><span class="badge ${success ? 'bg-success' : 'bg-danger'}">${success ? 'Approved' : 'Denied'}</span></td>
+        <td>${result.message || (success ? 'Validated' : 'Failed')} (${source})</td>
     `;
 
-    while (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
+    while (tbody.children.length > 20) {
+        tbody.removeChild(tbody.lastChild);
+    }
 }
+
+document.getElementById('event-select').addEventListener('change', async () => {
+    await stopScanner();
+    await loadGatesForSelectedEvent();
+});
+
+document.getElementById('start-scanner').addEventListener('click', startScanner);
+document.getElementById('stop-scanner').addEventListener('click', stopScanner);
+
+document.getElementById('manual-validation-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const code = document.getElementById('manual-code').value;
+    if (!code.trim()) {
+        return;
+    }
+    await validatePass(code, 'manual');
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const eventSelect = document.getElementById('event-select');
+    if (eventSelect.options.length > 1) {
+        eventSelect.selectedIndex = 1;
+        await loadGatesForSelectedEvent();
+    }
+});
 </script>
 {% endblock %}

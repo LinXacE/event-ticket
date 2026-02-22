@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">Manage Users</h3>
+        <a href="{{ url_for('rbac.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to Admin Dashboard
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        {% set is_default_admin = (user.username == default_admin_username) %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>
+                                {{ user.username }}
+                                {% if user.id == current_user.id %}
+                                    <span class="badge bg-secondary ms-1">You</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td><span class="badge bg-info text-dark">{{ user.role }}</span></td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-2">
+                                    <form method="POST" action="{{ url_for('rbac.update_user_role', user_id=user.id) }}" class="d-flex gap-2">
+                                        <select class="form-select form-select-sm" name="role" {% if is_default_admin or (user.id == current_user.id and user.role == 'admin') %}disabled{% endif %}>
+                                            {% if is_default_admin %}
+                                            <option value="admin" selected>admin</option>
+                                            {% else %}
+                                            <option value="organizer" {% if user.role == 'organizer' %}selected{% endif %}>organizer</option>
+                                            <option value="security" {% if user.role == 'security' %}selected{% endif %}>security</option>
+                                            {% endif %}
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" {% if is_default_admin or (user.id == current_user.id and user.role == 'admin') %}disabled{% endif %}>
+                                            Save
+                                        </button>
+                                    </form>
+
+                                    <form method="POST"
+                                          action="{{ url_for('rbac.delete_user', user_id=user.id) }}"
+                                          onsubmit="return confirm('Delete user {{ user.username }}? This action cannot be undone.');">
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-danger"
+                                                {% if user.id == current_user.id or is_default_admin %}disabled{% endif %}>
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,6 +2,7 @@ import barcode
 from barcode.writer import ImageWriter
 import os
 from PIL import Image, ImageDraw, ImageFont
+from flask import current_app, has_app_context
 
 def generate_barcode(data, filename, save_path='static/barcodes/', barcode_type='code128'):
     """
@@ -16,8 +17,7 @@ def generate_barcode(data, filename, save_path='static/barcodes/', barcode_type=
     Returns:
         The full path to the generated barcode
     """
-    # Create directory if it doesn't exist
-    os.makedirs(save_path, exist_ok=True)
+    save_dir, relative_prefix = _resolve_save_dir(save_path, 'barcodes')
     
     # Get barcode class
     barcode_class = barcode.get_barcode_class(barcode_type)
@@ -37,11 +37,13 @@ def generate_barcode(data, filename, save_path='static/barcodes/', barcode_type=
     }
     
     # Save barcode
-    full_path = os.path.join(save_path, filename)
-    barcode_instance.save(full_path, options=options)
-    
-    # The library adds .png extension automatically
-    return f"{full_path}.png"
+    full_path = os.path.join(save_dir, filename)
+    saved_file = barcode_instance.save(full_path, options=options)
+
+    if relative_prefix:
+        return f"{relative_prefix}/{os.path.basename(saved_file)}".replace("\\", "/")
+
+    return saved_file
 
 def create_event_pass_barcode(pass_code, event_name, participant_name, pass_type):
     """
@@ -87,3 +89,28 @@ def generate_batch_barcodes(pass_codes, save_path='static/barcodes/'):
             barcode_paths.append(None)
     
     return barcode_paths
+
+
+def _resolve_save_dir(save_path, default_subdir):
+    """
+    Resolve save directory against Flask static folder, not process CWD.
+    This prevents broken images when server is started from another directory.
+    """
+    raw = (save_path or f'static/{default_subdir}').replace('\\', '/').strip()
+
+    if has_app_context() and current_app.static_folder:
+        static_root = current_app.static_folder
+    else:
+        static_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
+
+    if os.path.isabs(raw):
+        absolute_dir = raw
+        relative_prefix = None
+    else:
+        relative_dir = raw[7:] if raw.startswith('static/') else raw
+        relative_dir = relative_dir.strip('/')
+        absolute_dir = os.path.join(static_root, relative_dir)
+        relative_prefix = f"static/{relative_dir}" if relative_dir else "static"
+
+    os.makedirs(absolute_dir, exist_ok=True)
+    return absolute_dir, relative_prefix

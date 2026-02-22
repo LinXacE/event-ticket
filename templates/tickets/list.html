@@ -5,17 +5,22 @@
 {% block content %}
 <div class="container-fluid py-5">
     <div class="row mb-4">
-        <div class="col-md-8">
+        <div class="col-md-6">
             <h2 class="mb-2">Tickets</h2>
             <p class="mb-0 opacity-75">{{ event.event_name }}</p>
         </div>
-        <div class="col-md-4 text-end">
-            <a href="{{ url_for('tickets.create_batch', event_id=event.id) }}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Create Batch
-            </a>
-            <a href="{{ url_for('tickets.create_promotion', event_id=event.id) }}" class="btn btn-success">
-                <i class="fas fa-gift"></i> Add Promotion
-            </a>
+        <div class="col-md-6">
+            <div class="d-flex flex-wrap justify-content-md-end gap-2 mt-3 mt-md-0">
+                <a href="{{ url_for('passes.view_passes', event_id=event.id) }}" class="btn btn-outline-info text-nowrap">
+                    <i class="fas fa-qrcode"></i> View Pass QR
+                </a>
+                <a href="{{ url_for('tickets.create_batch', event_id=event.id) }}" class="btn btn-primary text-nowrap">
+                    <i class="fas fa-plus"></i> Create Batch
+                </a>
+                <a href="{{ url_for('tickets.create_promotion', event_id=event.id) }}" class="btn btn-success text-nowrap">
+                    <i class="fas fa-gift"></i> Add Promotion
+                </a>
+            </div>
         </div>
     </div>
 
@@ -53,15 +58,28 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        <tr class="table-light">
+                                            <td colspan="7" class="small text-muted">
+                                                Ticket module is barcode-based. QR for gate validation is available in Passes.
+                                            </td>
+                                        </tr>
                                         {% for ticket in tickets %}
                                         <tr>
                                             <td>{{ loop.index }}</td>
                                             <td><code>{{ ticket.ticket_code }}</code></td>
                                             <td>
-                                                {% if ticket.status == 'available' %}
-                                                <img src="https://barcode.tec-it.com/barcode.ashx?data={{ ticket.barcode }}&code=Code128" alt="Barcode" style="height: 30px;">
+                                                {% if ticket.local_barcode_path %}
+                                                    <img src="{{ url_for('static', filename=ticket.local_barcode_path) }}"
+                                                         alt="Barcode"
+                                                         style="height: 34px; max-width: 170px; object-fit: contain;">
+                                                {% elif ticket.status == 'available' %}
+                                                    <img src="https://barcode.tec-it.com/barcode.ashx?data={{ ticket.barcode }}&code=Code128"
+                                                         alt="Barcode"
+                                                         style="height: 34px; max-width: 170px; object-fit: contain;"
+                                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+                                                    <span class="badge bg-danger-subtle text-danger" style="display:none;">Barcode image missing</span>
                                                 {% else %}
-                                                {{ ticket.barcode }}
+                                                    {{ ticket.barcode }}
                                                 {% endif %}
                                             </td>
                                             <td>
@@ -138,7 +156,17 @@
                                             <td>{{ loop.index }}</td>
                                             <td><code>{{ ticket.ticket_code }}</code></td>
                                             <td>
-                                                <img src="https://barcode.tec-it.com/barcode.ashx?data={{ ticket.barcode }}&code=Code128" alt="Barcode" style="height: 30px;">
+                                                {% if ticket.local_barcode_path %}
+                                                    <img src="{{ url_for('static', filename=ticket.local_barcode_path) }}"
+                                                         alt="Barcode"
+                                                         style="height: 34px; max-width: 170px; object-fit: contain;">
+                                                {% else %}
+                                                    <img src="https://barcode.tec-it.com/barcode.ashx?data={{ ticket.barcode }}&code=Code128"
+                                                         alt="Barcode"
+                                                         style="height: 34px; max-width: 170px; object-fit: contain;"
+                                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+                                                    <span class="badge bg-danger-subtle text-danger" style="display:none;">Barcode image missing</span>
+                                                {% endif %}
                                             </td>
                                             <td>{{ ticket.price }}</td>
                                             <td>

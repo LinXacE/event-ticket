@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 text-center">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-5">
+                    <h1 class="display-5 text-danger mb-3">500</h1>
+                    <h4 class="mb-3">Internal Server Error</h4>
+                    <p class="text-muted mb-4">Something went wrong while processing your request.</p>
+                    <a href="{{ url_for('rbac.admin_dashboard') if current_user.is_authenticated and current_user.role == 'admin' else url_for('dashboard.home') }}" class="btn btn-primary">
+                        {{ 'Back to Admin Dashboard' if current_user.is_authenticated and current_user.role == 'admin' else 'Back to Dashboard' }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -81,6 +81,12 @@
                                                 <i class="fas fa-door-open"></i>
                                             </a>
 
+                                            <!-- NEW: Manage Scanner Assignments -->
+                                            <a href="{{ url_for('events.manage_scanners', event_id=event.id) }}"
+                                               class="btn btn-sm btn-outline-info" title="Manage Scanner Assignments">
+                                                <i class="fas fa-user-shield"></i>
+                                            </a>
+
                                             <!-- Edit -->
                                             <a href="{{ url_for('events.edit_event', event_id=event.id) }}"
                                                class="btn btn-sm btn-outline-warning" title="Edit Event">

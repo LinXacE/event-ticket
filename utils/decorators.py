@@ -20,8 +20,19 @@ def role_required(*roles):
     return decorator
 
 def admin_only(f):
-    """Restrict route to admin only."""
-    return role_required('admin')(f)
+    """Restrict route to admin only with dedicated admin login redirect."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Please log in as admin.', 'warning')
+            return redirect(url_for('rbac.admin_login'))
+
+        if current_user.role != 'admin':
+            flash('Admin access only.', 'danger')
+            return redirect(url_for('dashboard.home'))
+
+        return f(*args, **kwargs)
+    return decorated_function
 
 def organizer_or_admin(f):
     """Restrict to organizer or admin."""

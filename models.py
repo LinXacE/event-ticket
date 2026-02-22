@@ -267,6 +267,9 @@ class GateAccessRule(db.Model):
     pass_type_id = db.Column(db.Integer, db.ForeignKey('pass_types.id'), nullable=False)
     can_access = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Enables template access like rule.pass_type.type_name
+    pass_type = db.relationship('PassType', backref=db.backref('gate_rules', lazy=True))
     
     def __repr__(self):
         return f'<GateAccessRule Gate:{self.gate_id} PassType:{self.pass_type_id}>'
@@ -285,6 +288,97 @@ class GateValidationLog(db.Model):
     
     def __repr__(self):
         return f'<GateValidationLog {self.id}>'
+
+
+# ================= TICKET GATE VALIDATION LOG =================
+
+class TicketGateValidationLog(db.Model):
+    __tablename__ = 'ticket_gate_validation_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=False)
+    gate_id = db.Column(db.Integer, db.ForeignKey('gates.id'), nullable=False)
+    validator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    validation_status = db.Column(
+        db.Enum('success', 'failed', 'duplicate', name='ticket_gate_validation_status'),
+        nullable=False
+    )
+    validation_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    ticket = db.relationship(
+        'Ticket',
+        backref=db.backref('gate_validation_logs', lazy=True, cascade='all, delete-orphan')
+    )
+    gate = db.relationship(
+        'Gate',
+        backref=db.backref('ticket_validation_logs', lazy=True, cascade='all, delete-orphan')
+    )
+    validator = db.relationship(
+        'User',
+        backref=db.backref('ticket_validation_logs', lazy=True)
+    )
+
+    def __repr__(self):
+        return f'<TicketGateValidationLog Ticket:{self.ticket_id} Gate:{self.gate_id} Status:{self.validation_status}>'
+
+
+# ================= EVENT SCANNER ASSIGNMENT =================
+
+class EventScannerAssignment(db.Model):
+    __tablename__ = 'event_scanner_assignments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    scanner_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    gate_id = db.Column(db.Integer, db.ForeignKey('gates.id'))
+    assigned_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    event = db.relationship('Event', backref=db.backref('scanner_assignments', lazy=True, cascade='all, delete-orphan'))
+    scanner_user = db.relationship('User', foreign_keys=[scanner_user_id], backref=db.backref('scanner_assignments', lazy=True))
+    assigned_by = db.relationship('User', foreign_keys=[assigned_by_user_id], backref=db.backref('created_scanner_assignments', lazy=True))
+    gate = db.relationship('Gate', backref=db.backref('scanner_assignments', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'scanner_user_id', 'gate_id', name='uq_event_scanner_gate'),
+    )
+
+    def __repr__(self):
+        gate_text = self.gate_id if self.gate_id is not None else 'all-gates'
+        return f'<EventScannerAssignment Event:{self.event_id} Scanner:{self.scanner_user_id} Gate:{gate_text}>'
+
+
+# ================= EVENT SCANNER INVITE =================
+
+class EventScannerInvite(db.Model):
+    __tablename__ = 'event_scanner_invites'
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
+    inviter_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    invitee_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    gate_id = db.Column(db.Integer, db.ForeignKey('gates.id'))
+    status = db.Column(
+        db.Enum('pending', 'accepted', 'declined', 'cancelled', name='scanner_invite_status'),
+        nullable=False,
+        default='pending'
+    )
+    invite_message = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    responded_at = db.Column(db.DateTime)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    event = db.relationship('Event', backref=db.backref('scanner_invites', lazy=True, cascade='all, delete-orphan'))
+    gate = db.relationship('Gate', backref=db.backref('scanner_invites', lazy=True))
+    inviter = db.relationship('User', foreign_keys=[inviter_user_id], backref=db.backref('sent_scanner_invites', lazy=True))
+    invitee = db.relationship('User', foreign_keys=[invitee_user_id], backref=db.backref('received_scanner_invites', lazy=True))
+
+    def __repr__(self):
+        gate_text = self.gate_id if self.gate_id is not None else 'all-gates'
+        return f'<EventScannerInvite Event:{self.event_id} Invitee:{self.invitee_user_id} Gate:{gate_text} Status:{self.status}>'
 
 # ================= OFFLINE VALIDATION QUEUE =================
 

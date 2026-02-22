@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Scanner Invitations - {{ event.event_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">Scanner Invitations</h3>
+            <div class="text-muted">{{ event.event_name }}</div>
+        </div>
+        <a href="{{ url_for('dashboard.events') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Events
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-paper-plane text-primary me-2"></i>Send Invite</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('events.send_scanner_invite', event_id=event.id) }}">
+                        <div class="mb-3">
+                            <label class="form-label">Target User</label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="invitee_identifier"
+                                   placeholder="Username or numeric User ID"
+                                   required>
+                            <small class="text-muted">Invite by exact username (recommended) or user ID.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Gate Scope</label>
+                            <select class="form-select" name="gate_id">
+                                <option value="">All Gates (Event-wide)</option>
+                                {% for gate in gates %}
+                                    <option value="{{ gate.id }}">{{ gate.gate_name }} ({{ gate.gate_type }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Message (Optional)</label>
+                            <textarea class="form-control"
+                                      name="invite_message"
+                                      rows="2"
+                                      maxlength="255"
+                                      placeholder="Short invite message"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-paper-plane me-2"></i>Send Invite
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-hourglass-half text-warning me-2"></i>Pending Invites</h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_invites %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Scope</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for invite in pending_invites %}
+                                    <tr>
+                                        <td>
+                                            <div>{{ invite.invitee.username if invite.invitee else invite.invitee_user_id }}</div>
+                                            <small class="text-muted">
+                                                {{ invite.created_at.strftime('%Y-%m-%d %H:%M') if invite.created_at else '' }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if invite.gate %}
+                                                <span class="badge bg-secondary">{{ invite.gate.gate_name }}</span>
+                                            {% else %}
+                                                <span class="badge bg-success">All Gates</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <form method="POST"
+                                                  action="{{ url_for('events.cancel_scanner_invite', event_id=event.id, invite_id=invite.id) }}"
+                                                  onsubmit="return confirm('Cancel this pending invite?');">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    Cancel
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">No pending invites.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-list-check text-success me-2"></i>Active Scanner Access</h5>
+                </div>
+                <div class="card-body">
+                    {% if assignments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Scope</th>
+                                    <th>Assigned By</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in assignments %}
+                                <tr>
+                                    <td>{{ assignment.scanner_user.username if assignment.scanner_user else assignment.scanner_user_id }}</td>
+                                    <td>
+                                        <span class="badge bg-info text-dark">
+                                            {{ assignment.scanner_user.role if assignment.scanner_user else '-' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if assignment.gate %}
+                                            <span class="badge bg-secondary">{{ assignment.gate.gate_name }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success">All Gates</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ assignment.assigned_by.username if assignment.assigned_by else assignment.assigned_by_user_id }}</td>
+                                    <td class="text-end">
+                                        <form method="POST"
+                                              action="{{ url_for('events.remove_scanner_assignment', event_id=event.id, assignment_id=assignment.id) }}"
+                                              onsubmit="return confirm('Remove this scanner access?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash me-1"></i>Remove
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-muted">No active scanner assignments yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-clock-rotate-left text-secondary me-2"></i>Invite History</h5>
+                </div>
+                <div class="card-body">
+                    {% if invite_history %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Scope</th>
+                                    <th>Status</th>
+                                    <th>Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invite in invite_history %}
+                                <tr>
+                                    <td>{{ invite.invitee.username if invite.invitee else invite.invitee_user_id }}</td>
+                                    <td>
+                                        {% if invite.gate %}
+                                            {{ invite.gate.gate_name }}
+                                        {% else %}
+                                            All Gates
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set st = invite.status %}
+                                        <span class="badge {% if st == 'accepted' %}bg-success{% elif st == 'declined' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ st|capitalize }}
+                                        </span>
+                                    </td>
+                                    <td>{{ invite.updated_at.strftime('%Y-%m-%d %H:%M') if invite.updated_at else '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-muted">No invite history yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

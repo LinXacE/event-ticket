@@ -16,6 +16,8 @@ bcrypt = Bcrypt()
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
+        if current_user.role == 'admin':
+            return redirect(url_for('rbac.admin_dashboard'))
         return redirect(url_for('dashboard.home'))
 
     if request.method == 'POST':
@@ -24,6 +26,10 @@ def login():
         remember = True if request.form.get('remember') else False
 
         user = User.query.filter_by(username=username).first()
+
+        if user and user.role == 'admin':
+            flash('Admin account must use the separate admin login page.', 'warning')
+            return redirect(url_for('rbac.admin_login'))
 
         if user and bcrypt.check_password_hash(user.password_hash, password):
             login_user(user, remember=remember)
@@ -57,7 +63,7 @@ def register():
         # Full name safe build
         full_name = ((first_name or '') + ' ' + (last_name or '')).strip()
 
-        # SECURITY: Do NOT allow users to choose role
+        # Public registration is for normal organizer users only.
         role = 'organizer'
 
         # Password match check

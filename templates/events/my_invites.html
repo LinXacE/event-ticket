@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}My Scanner Invites{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">My Scanner Invites</h3>
+            <div class="text-muted">Accept or decline event scanner invitations</div>
+        </div>
+        <a href="{{ url_for('dashboard.home') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0"><i class="fas fa-envelope-open-text text-primary me-2"></i>Pending Invites</h5>
+        </div>
+        <div class="card-body">
+            {% if pending_invites %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Scope</th>
+                            <th>From</th>
+                            <th>Message</th>
+                            <th>Received</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invite in pending_invites %}
+                        <tr>
+                            <td>{{ invite.event.event_name if invite.event else invite.event_id }}</td>
+                            <td>
+                                {% if invite.gate %}
+                                    <span class="badge bg-secondary">{{ invite.gate.gate_name }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">All Gates</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ invite.inviter.username if invite.inviter else invite.inviter_user_id }}</td>
+                            <td>{{ invite.invite_message or '-' }}</td>
+                            <td>{{ invite.created_at.strftime('%Y-%m-%d %H:%M') if invite.created_at else '-' }}</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-2">
+                                    <form method="POST" action="{{ url_for('events.accept_scanner_invite', invite_id=invite.id) }}">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check me-1"></i>Accept
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('events.decline_scanner_invite', invite_id=invite.id) }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-times me-1"></i>Decline
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-muted">No pending invites.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0"><i class="fas fa-history text-secondary me-2"></i>Invite History</h5>
+        </div>
+        <div class="card-body">
+            {% if invite_history %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Scope</th>
+                            <th>Status</th>
+                            <th>From</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invite in invite_history %}
+                        <tr>
+                            <td>{{ invite.event.event_name if invite.event else invite.event_id }}</td>
+                            <td>
+                                {% if invite.gate %}
+                                    {{ invite.gate.gate_name }}
+                                {% else %}
+                                    All Gates
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set st = invite.status %}
+                                <span class="badge {% if st == 'accepted' %}bg-success{% elif st == 'declined' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {{ st|capitalize }}
+                                </span>
+                            </td>
+                            <td>{{ invite.inviter.username if invite.inviter else invite.inviter_user_id }}</td>
+                            <td>{{ invite.updated_at.strftime('%Y-%m-%d %H:%M') if invite.updated_at else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-muted">No invite history yet.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
